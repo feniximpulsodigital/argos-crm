@@ -1,0 +1,175 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
+
+// ─── Contacts ───
+export function useContacts() {
+  return useQuery({
+    queryKey: ['contacts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .order('last_message_at', { ascending: false, nullsFirst: false });
+      if (error) throw error;
+      return data as Tables<'contacts'>[];
+    },
+  });
+}
+
+export function useUpdateContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Tables<'contacts'>> & { id: string }) => {
+      const { error } = await supabase.from('contacts').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contacts'] }),
+  });
+}
+
+// ─── Messages ───
+export function useMessages(contactId: string | null) {
+  return useQuery({
+    queryKey: ['messages', contactId],
+    enabled: !!contactId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('contact_id', contactId!)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data as Tables<'messages'>[];
+    },
+  });
+}
+
+export function useSendMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (msg: { contact_id: string; content: string; sender_type: string; sender_name?: string; sender_user_id?: string }) => {
+      const { error } = await supabase.from('messages').insert(msg);
+      if (error) throw error;
+      // Update contact last_message_at
+      await supabase.from('contacts').update({ last_message_at: new Date().toISOString() }).eq('id', msg.contact_id);
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['messages', vars.contact_id] });
+      qc.invalidateQueries({ queryKey: ['contacts'] });
+    },
+  });
+}
+
+// ─── Pipeline Stages ───
+export function usePipelineStages() {
+  return useQuery({
+    queryKey: ['pipeline_stages'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pipeline_stages')
+        .select('*')
+        .order('position');
+      if (error) throw error;
+      return data as Tables<'pipeline_stages'>[];
+    },
+  });
+}
+
+// ─── Tags ───
+export function useTags() {
+  return useQuery({
+    queryKey: ['tags'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('tags').select('*').order('name');
+      if (error) throw error;
+      return data as Tables<'tags'>[];
+    },
+  });
+}
+
+// ─── Reengagement Rules ───
+export function useReengagementRules() {
+  return useQuery({
+    queryKey: ['reengagement_rules'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('reengagement_rules').select('*').order('created_at');
+      if (error) throw error;
+      return data as Tables<'reengagement_rules'>[];
+    },
+  });
+}
+
+export function useUpsertReengagementRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rule: Partial<Tables<'reengagement_rules'>> & { name: string; message: string }) => {
+      const { error } = rule.id
+        ? await supabase.from('reengagement_rules').update(rule).eq('id', rule.id)
+        : await supabase.from('reengagement_rules').insert(rule);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reengagement_rules'] }),
+  });
+}
+
+export function useDeleteReengagementRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('reengagement_rules').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reengagement_rules'] }),
+  });
+}
+
+// ─── App Settings ───
+export function useAppSettings() {
+  return useQuery({
+    queryKey: ['app_settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('app_settings').select('*');
+      if (error) throw error;
+      return data as Tables<'app_settings'>[];
+    },
+  });
+}
+
+export function useUpdateAppSetting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: any }) => {
+      const { error } = await supabase
+        .from('app_settings')
+        .update({ value, updated_at: new Date().toISOString() })
+        .eq('key', key);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['app_settings'] }),
+  });
+}
+
+// ─── Profiles (team) ───
+export function useProfiles() {
+  return useQuery({
+    queryKey: ['profiles'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('profiles').select('*').order('name');
+      if (error) throw error;
+      return data as Tables<'profiles'>[];
+    },
+  });
+}
+
+// ─── User Roles ───
+export function useUserRoles() {
+  return useQuery({
+    queryKey: ['user_roles'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('user_roles').select('*');
+      if (error) throw error;
+      return data as Tables<'user_roles'>[];
+    },
+  });
+}
