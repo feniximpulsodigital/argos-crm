@@ -124,16 +124,18 @@ export default function PresetMessages() {
 
       {/* Funnel inactivity rule */}
       <Card>
-        <CardContent className="pt-5">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><Clock className="h-4 w-4" />Regra de Inatividade do Funil</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Clock className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Regra de inatividade do funil</p>
-                <p className="text-xs text-muted-foreground">Após 14 dias sem interação, mover lead para "FORA DE FUNIL"</p>
-              </div>
-            </div>
+            <div><Label>Ativar regra de inatividade</Label><p className="text-xs text-muted-foreground">Leads sem interação serão movidos automaticamente para "Fora de Funil"</p></div>
             <Switch defaultChecked />
+          </div>
+          <div className="space-y-2">
+            <Label>Dias sem interação para ativar</Label>
+            <Input type="number" defaultValue="7" min="1" max="365" className="w-32" />
+            <p className="text-xs text-muted-foreground">Após esse período sem mensagens, o lead será movido para "Fora de Funil"</p>
           </div>
         </CardContent>
       </Card>
