@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,9 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
   MessageSquare, Facebook, Webhook, Brain, Palette, Users,
-  Plus, Copy, Trash, ExternalLink, QrCode, Check, X,
+  Plus, Trash, ExternalLink, QrCode, X, Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  useTags, usePipelineStages, useProfiles, useUserRoles,
+  useAppSettings, useUpdateAppSetting,
+} from '@/hooks/useSupabaseData';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -25,6 +29,23 @@ export default function Settings() {
       navigate('/', { replace: true });
     }
   }, [user, navigate]);
+
+  const { data: tags, isLoading: tagsLoading } = useTags();
+  const { data: stages } = usePipelineStages();
+  const { data: profiles } = useProfiles();
+  const { data: roles } = useUserRoles();
+  const { data: settings } = useAppSettings();
+  const updateSetting = useUpdateAppSetting();
+
+  const aiConfig = settings?.find(s => s.key === 'ai_config')?.value as any;
+
+  const regularTags = tags?.filter(t => !t.is_channel_tag) || [];
+  const channelTags = tags?.filter(t => t.is_channel_tag) || [];
+
+  const teamMembers = profiles?.map(p => {
+    const role = roles?.find(r => r.user_id === p.id);
+    return { ...p, role: role?.role || 'atendente' };
+  }) || [];
 
   if (user?.role !== 'admin') return null;
 
@@ -70,7 +91,6 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Meta API (WhatsApp Business)</CardTitle>
@@ -83,9 +103,7 @@ export default function Settings() {
                 <div className="space-y-2"><Label>WABA ID</Label><Input placeholder="WhatsApp Business Account ID" /></div>
                 <div className="space-y-2"><Label>App Secret</Label><Input type="password" placeholder="App Secret" /></div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => toast.info('Testando conexão...')}>Testar Conexão</Button>
-              </div>
+              <Button variant="outline" onClick={() => toast.info('Testando conexão...')}>Testar Conexão</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -123,9 +141,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Button size="sm"><Plus className="mr-1 h-3 w-3" /> Criar novo webhook</Button>
-              <div className="rounded-lg border p-4 text-center text-sm text-muted-foreground">
-                Nenhum webhook de entrada configurado
-              </div>
+              <div className="rounded-lg border p-4 text-center text-sm text-muted-foreground">Nenhum webhook configurado</div>
             </CardContent>
           </Card>
           <Card>
@@ -142,11 +158,7 @@ export default function Settings() {
               <div>
                 <Label className="text-sm font-medium mb-3 block">Eventos para disparar:</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[
-                    'Novo contato recebido', 'Nova mensagem do lead', 'IA desativada manualmente',
-                    'IA reativada manualmente', 'Contato encaminhado', 'Compra realizada',
-                    'Tag adicionada/removida', 'Contato movido no funil', 'Reengajamento enviado',
-                  ].map(event => (
+                  {['Novo contato recebido', 'Nova mensagem do lead', 'IA desativada manualmente', 'IA reativada manualmente', 'Contato encaminhado', 'Compra realizada', 'Tag adicionada/removida', 'Contato movido no funil', 'Reengajamento enviado'].map(event => (
                     <div key={event} className="flex items-center gap-2">
                       <Switch defaultChecked />
                       <span className="text-sm text-foreground">{event}</span>
@@ -162,36 +174,45 @@ export default function Settings() {
         {/* IA Tab */}
         <TabsContent value="ia" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Configurações da IA</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-base">Configurações da IA</CardTitle></CardHeader>
             <CardContent className="space-y-5">
               <div className="space-y-2">
                 <Label>Nome da IA</Label>
-                <Input defaultValue="IA" placeholder="Nome exibido na interface" />
-                <p className="text-xs text-muted-foreground">Este nome será usado em toda a interface</p>
+                <Input defaultValue={aiConfig?.name || 'IA'} placeholder="Nome exibido na interface" />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
                 <div><Label>IA ativa globalmente</Label><p className="text-xs text-muted-foreground">Ativar/desativar para todos os contatos</p></div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={aiConfig?.active_globally ?? true}
+                  onCheckedChange={v => updateSetting.mutate({ key: 'ai_config', value: { ...aiConfig, active_globally: v } })}
+                />
               </div>
               <div className="flex items-center justify-between">
                 <div><Label>IA inicia automaticamente</Label><p className="text-xs text-muted-foreground">Novo contato recebe IA ativa</p></div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={aiConfig?.auto_start ?? true}
+                  onCheckedChange={v => updateSetting.mutate({ key: 'ai_config', value: { ...aiConfig, auto_start: v } })}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Delay de resposta (segundos)</Label>
-                <Input type="number" defaultValue="3" className="w-32" />
+                <Input type="number" defaultValue={aiConfig?.delay_seconds ?? 3} className="w-32" />
               </div>
               <Separator />
               <div>
                 <Label className="mb-3 block">Configuração por canal</Label>
                 <div className="space-y-2">
-                  {['WhatsApp', 'Instagram Direct', 'Messenger', 'Facebook', 'Site'].map(ch => (
+                  {Object.entries(aiConfig?.channels || {}).map(([ch, enabled]) => (
                     <div key={ch} className="flex items-center justify-between py-1">
-                      <span className="text-sm text-foreground">{ch}</span>
-                      <Switch defaultChecked />
+                      <span className="text-sm text-foreground capitalize">{ch.replace('-', ' ')}</span>
+                      <Switch
+                        checked={enabled as boolean}
+                        onCheckedChange={v => updateSetting.mutate({
+                          key: 'ai_config',
+                          value: { ...aiConfig, channels: { ...aiConfig.channels, [ch]: v } },
+                        })}
+                      />
                     </div>
                   ))}
                 </div>
@@ -210,15 +231,10 @@ export default function Settings() {
             <CardContent className="space-y-3">
               <Button size="sm"><Plus className="mr-1 h-3 w-3" />Nova Tag</Button>
               <div className="flex flex-wrap gap-2">
-                {[
-                  { name: 'Lead', color: '#3b82f6' }, { name: 'Comprou', color: '#22c55e' },
-                  { name: 'Sem retorno', color: '#ef4444' }, { name: 'Interessado', color: '#f59e0b' },
-                  { name: 'Suporte', color: '#8b5cf6' }, { name: 'VIP', color: '#ec4899' },
-                ].map(tag => (
-                  <Badge key={tag.name} variant="outline" className="gap-1.5 px-3 py-1">
+                {regularTags.map(tag => (
+                  <Badge key={tag.id} variant="outline" className="gap-1.5 px-3 py-1">
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
                     {tag.name}
-                    <button className="ml-1 text-muted-foreground hover:text-destructive"><X className="h-3 w-3" /></button>
                   </Badge>
                 ))}
               </div>
@@ -226,11 +242,8 @@ export default function Settings() {
               <div>
                 <Label className="text-sm font-medium mb-2 block">Tags de canal (automáticas)</Label>
                 <div className="flex flex-wrap gap-2">
-                  {[
-                    { name: 'whatsapp', color: '#25D366' }, { name: 'instagram-direct', color: '#E1306C' },
-                    { name: 'messenger', color: '#0084FF' }, { name: 'facebook-ads', color: '#1877F2' },
-                  ].map(tag => (
-                    <Badge key={tag.name} variant="outline" className="gap-1.5 px-3 py-1 opacity-70">
+                  {channelTags.map(tag => (
+                    <Badge key={tag.id} variant="outline" className="gap-1.5 px-3 py-1 opacity-70">
                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
                       {tag.name}
                     </Badge>
@@ -242,17 +255,16 @@ export default function Settings() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Fases do Funil</CardTitle>
-              <CardDescription>Configure as fases do pipeline de vendas</CardDescription>
+              <CardDescription>Pipeline de vendas configurado</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {['Novo Lead', 'Em Atendimento', 'Proposta Enviada', 'Negociação', 'Compra Realizada', 'Fora de Funil'].map((stage, i) => (
-                <div key={stage} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50">
+              {stages?.map((stage, i) => (
+                <div key={stage.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50">
                   <span className="text-sm text-muted-foreground w-6">{i + 1}</span>
-                  <Input defaultValue={stage} className="flex-1" />
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash className="h-3.5 w-3.5" /></Button>
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: stage.color }} />
+                  <span className="text-sm text-foreground flex-1">{stage.name}</span>
                 </div>
               ))}
-              <Button size="sm" variant="outline"><Plus className="mr-1 h-3 w-3" />Adicionar Fase</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -263,20 +275,16 @@ export default function Settings() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-base">Equipe</CardTitle>
-                <CardDescription>Gerencie os membros da equipe</CardDescription>
+                <CardDescription>Membros da equipe</CardDescription>
               </div>
-              <Button size="sm" onClick={() => toast.info('Funcionalidade disponível após conectar Supabase Auth')}>
+              <Button size="sm" onClick={() => toast.info('Para convidar membros, crie o usuário no painel Supabase Auth')}>
                 <Plus className="mr-1 h-3 w-3" />Convidar membro
               </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {[
-                  { name: 'Admin Argos', email: 'admin@argos.com', role: 'admin', tag: 'admin', active: true },
-                  { name: 'Maria Silva', email: 'maria@argos.com', role: 'atendente', tag: 'maria', active: true },
-                  { name: 'Carlos Souza', email: 'carlos@argos.com', role: 'atendente', tag: 'carlos', active: true },
-                ].map(member => (
-                  <div key={member.email} className="flex items-center justify-between p-3 rounded-lg border">
+                {teamMembers.map(member => (
+                  <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-3">
                       <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center text-sm font-medium text-secondary-foreground">
                         {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
@@ -288,16 +296,16 @@ export default function Settings() {
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge variant={member.role === 'admin' ? 'default' : 'secondary'} className="text-xs capitalize">{member.role}</Badge>
-                      <Badge variant="outline" className="text-xs">@{member.tag}</Badge>
-                      <Switch checked={member.active} />
+                      <Badge variant="outline" className="text-xs">@{member.agent_tag}</Badge>
+                      <Switch checked={member.is_active} />
                     </div>
                   </div>
                 ))}
+                {teamMembers.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum membro</p>}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
-
       </Tabs>
     </div>
   );
