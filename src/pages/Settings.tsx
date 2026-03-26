@@ -315,26 +315,6 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {/* Supabase Tab */}
-        <TabsContent value="supabase" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Conexão Supabase</CardTitle>
-              <CardDescription>Configure a conexão com seu projeto Supabase</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2"><Label>URL do Projeto</Label><Input placeholder="https://xxxxx.supabase.co" /></div>
-                <div className="space-y-2"><Label>Anon/Public Key</Label><Input placeholder="eyJ..." /></div>
-                <div className="space-y-2"><Label>Service Role Key</Label><Input type="password" placeholder="eyJ..." /></div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Badge variant="secondary"><X className="h-3 w-3 mr-1" />Não conectado</Badge>
-                <Button variant="outline" onClick={() => toast.info('Conecte o Lovable Cloud para ativar')}>Testar Conexão</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );
