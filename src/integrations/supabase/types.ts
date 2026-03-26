@@ -14,16 +14,269 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      app_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      contacts: {
+        Row: {
+          ai_enabled: boolean
+          assigned_agent_id: string | null
+          channel: string
+          channel_tag: string
+          created_at: string
+          email: string | null
+          id: string
+          last_message_at: string | null
+          name: string
+          phone: string | null
+          pipeline_stage: string
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          ai_enabled?: boolean
+          assigned_agent_id?: string | null
+          channel?: string
+          channel_tag?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_message_at?: string | null
+          name: string
+          phone?: string | null
+          pipeline_stage?: string
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          ai_enabled?: boolean
+          assigned_agent_id?: string | null
+          channel?: string
+          channel_tag?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_message_at?: string | null
+          name?: string
+          phone?: string | null
+          pipeline_stage?: string
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          contact_id: string
+          content: string
+          created_at: string
+          id: string
+          sender_name: string | null
+          sender_type: string
+          sender_user_id: string | null
+        }
+        Insert: {
+          contact_id: string
+          content: string
+          created_at?: string
+          id?: string
+          sender_name?: string | null
+          sender_type: string
+          sender_user_id?: string | null
+        }
+        Update: {
+          contact_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          sender_name?: string | null
+          sender_type?: string
+          sender_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_stages: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          position: number
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          agent_tag: string
+          avatar_url: string | null
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          agent_tag?: string
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          id: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          agent_tag?: string
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reengagement_rules: {
+        Row: {
+          add_tag_after: string | null
+          created_at: string
+          id: string
+          inactivity_unit: string
+          inactivity_value: number
+          is_active: boolean
+          message: string
+          name: string
+          reactivate_ai: boolean
+          required_tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          add_tag_after?: string | null
+          created_at?: string
+          id?: string
+          inactivity_unit?: string
+          inactivity_value?: number
+          is_active?: boolean
+          message: string
+          name: string
+          reactivate_ai?: boolean
+          required_tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          add_tag_after?: string | null
+          created_at?: string
+          id?: string
+          inactivity_unit?: string
+          inactivity_value?: number
+          is_active?: boolean
+          message?: string
+          name?: string
+          reactivate_ai?: boolean
+          required_tags?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_channel_tag: boolean
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_channel_tag?: boolean
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_channel_tag?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "atendente"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +403,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "atendente"],
+    },
   },
 } as const
