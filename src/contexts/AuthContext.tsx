@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 export interface User {
   id: string;
@@ -18,38 +20,71 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const MOCK_USERS = [
-  { id: '1', name: 'Admin Argos', email: 'admin@argos.com', password: 'admin123', role: 'admin' as const, agent_tag: 'admin' },
-  { id: '2', name: 'Maria Silva', email: 'maria@argos.com', password: 'maria123', role: 'atendente' as const, agent_tag: 'maria' },
-  { id: '3', name: 'Carlos Souza', email: 'carlos@argos.com', password: 'carlos123', role: 'atendente' as const, agent_tag: 'carlos' },
-];
+async function buildUserProfile(supabaseUser: SupabaseUser): Promise<User | null> {
+  // Fetch profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('name, email, agent_tag')
+    .eq('id', supabaseUser.id)
+    .single();
+
+  // Fetch role
+  const { data: roleData } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', supabaseUser.id)
+    .single();
+
+  if (!profile) return null;
+
+  return {
+    id: supabaseUser.id,
+    name: profile.name,
+    email: profile.email,
+    role: (roleData?.role as 'admin' | 'atendente') ?? 'atendente',
+    agent_tag: profile.agent_tag,
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('argos_user');
-    if (stored) {
-      try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
-    }
-    setLoading(false);
+    // Check existing session
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const profile = await buildUserProfile(session.user);
+        setUser(profile);
+      }
+      setLoading(false);
+    };
+    init();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          const profile = await buildUserProfile(session.user);
+          setUser(profile);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    const found = MOCK_USERS.find(u => u.email === email && u.password === password);
-    if (found) {
-      const { password: _, ...userData } = found;
-      setUser(userData);
-      localStorage.setItem('argos_user', JSON.stringify(userData));
-      return true;
-    }
-    return false;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return !error;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('argos_user');
   };
 
   return (
