@@ -255,23 +255,6 @@ export default function Settings() {
               <Button size="sm" variant="outline"><Plus className="mr-1 h-3 w-3" />Adicionar Fase</Button>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Regra de Inatividade</CardTitle>
-              <CardDescription>Mova leads inativos automaticamente para "Fora de Funil"</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div><Label>Ativar regra de inatividade</Label><p className="text-xs text-muted-foreground">Leads sem interação serão movidos automaticamente</p></div>
-                <Switch defaultChecked />
-              </div>
-              <div className="space-y-2">
-                <Label>Dias sem interação para ativar</Label>
-                <Input type="number" defaultValue="7" min="1" max="365" className="w-32" />
-                <p className="text-xs text-muted-foreground">Após esse período sem mensagens, o lead será movido para "Fora de Funil"</p>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* Equipe Tab */}
