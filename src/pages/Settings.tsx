@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
   MessageSquare, Facebook, Webhook, Brain, Palette, Users,
-  Database, Plus, Copy, Trash, ExternalLink, QrCode, Check, X,
+  Plus, Copy, Trash, ExternalLink, QrCode, Check, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -43,7 +43,6 @@ export default function Settings() {
           <TabsTrigger value="ia" className="gap-1.5"><Brain className="h-3.5 w-3.5" />IA</TabsTrigger>
           <TabsTrigger value="tags" className="gap-1.5"><Palette className="h-3.5 w-3.5" />Tags e Funil</TabsTrigger>
           <TabsTrigger value="equipe" className="gap-1.5"><Users className="h-3.5 w-3.5" />Equipe</TabsTrigger>
-          <TabsTrigger value="supabase" className="gap-1.5"><Database className="h-3.5 w-3.5" />Supabase</TabsTrigger>
         </TabsList>
 
         {/* WhatsApp Tab */}
@@ -256,6 +255,23 @@ export default function Settings() {
               <Button size="sm" variant="outline"><Plus className="mr-1 h-3 w-3" />Adicionar Fase</Button>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Regra de Inatividade</CardTitle>
+              <CardDescription>Mova leads inativos automaticamente para "Fora de Funil"</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div><Label>Ativar regra de inatividade</Label><p className="text-xs text-muted-foreground">Leads sem interação serão movidos automaticamente</p></div>
+                <Switch defaultChecked />
+              </div>
+              <div className="space-y-2">
+                <Label>Dias sem interação para ativar</Label>
+                <Input type="number" defaultValue="7" min="1" max="365" className="w-32" />
+                <p className="text-xs text-muted-foreground">Após esse período sem mensagens, o lead será movido para "Fora de Funil"</p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Equipe Tab */}
@@ -299,26 +315,6 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {/* Supabase Tab */}
-        <TabsContent value="supabase" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Conexão Supabase</CardTitle>
-              <CardDescription>Configure a conexão com seu projeto Supabase</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2"><Label>URL do Projeto</Label><Input placeholder="https://xxxxx.supabase.co" /></div>
-                <div className="space-y-2"><Label>Anon/Public Key</Label><Input placeholder="eyJ..." /></div>
-                <div className="space-y-2"><Label>Service Role Key</Label><Input type="password" placeholder="eyJ..." /></div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Badge variant="secondary"><X className="h-3 w-3 mr-1" />Não conectado</Badge>
-                <Button variant="outline" onClick={() => toast.info('Conecte o Lovable Cloud para ativar')}>Testar Conexão</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );
