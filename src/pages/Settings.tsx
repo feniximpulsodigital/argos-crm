@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
   MessageSquare, Facebook, Webhook, Brain, Palette, Users,
-  Database, Plus, Copy, Trash, ExternalLink, QrCode, Check, X,
+  Plus, Copy, Trash, ExternalLink, QrCode, Check, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
