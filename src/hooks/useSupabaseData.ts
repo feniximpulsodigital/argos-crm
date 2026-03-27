@@ -76,6 +76,73 @@ export function usePipelineStages() {
   });
 }
 
+export function useCreatePipelineStage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (stage: { name: string; color: string; position: number }) => {
+      const { error } = await supabase.from('pipeline_stages').insert(stage);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pipeline_stages'] }),
+  });
+}
+
+export function useUpdatePipelineStage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; color?: string; position?: number }) => {
+      const { error } = await supabase.from('pipeline_stages').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pipeline_stages'] }),
+  });
+}
+
+export function useDeletePipelineStage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('pipeline_stages').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pipeline_stages'] }),
+  });
+}
+
+export function useReorderPipelineStages() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (stages: { id: string; position: number }[]) => {
+      for (const s of stages) {
+        const { error } = await supabase.from('pipeline_stages').update({ position: s.position }).eq('id', s.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pipeline_stages'] }),
+  });
+}
+
+// ─── Invite User ───
+export function useInviteUser() {
+  return useMutation({
+    mutationFn: async (payload: { email: string; name: string; role: 'admin' | 'atendente' }) => {
+      const res = await fetch(`https://cberrojynahjnplaezji.supabase.co/functions/v1/invite-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Erro ao convidar usuário');
+      }
+      return res.json();
+    },
+  });
+}
+
 // ─── Tags ───
 export function useTags() {
   return useQuery({
@@ -85,6 +152,39 @@ export function useTags() {
       if (error) throw error;
       return data as Tables<'tags'>[];
     },
+  });
+}
+
+export function useCreateTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (tag: { name: string; color: string; is_channel_tag?: boolean }) => {
+      const { error } = await supabase.from('tags').insert(tag);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tags'] }),
+  });
+}
+
+export function useUpdateTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; color?: string }) => {
+      const { error } = await supabase.from('tags').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tags'] }),
+  });
+}
+
+export function useDeleteTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('tags').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tags'] }),
   });
 }
 
