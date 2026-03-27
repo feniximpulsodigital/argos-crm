@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Search, Send, Bot, User, ArrowRight, Store, Globe, ShoppingCart, Loader2,
+  Search, Send, Bot, User, ArrowRight, Store, Globe, ShoppingCart, Loader2, Tag, Plus, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useContacts, useMessages, useSendMessage, useUpdateContact } from '@/hooks/useSupabaseData';
+import { useContacts, useMessages, useSendMessage, useUpdateContact, useTags } from '@/hooks/useSupabaseData';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO } from 'date-fns';
 
@@ -20,9 +21,61 @@ const channelStyles: Record<string, { bg: string; label: string }> = {
   site: { bg: '#f37121', label: 'Site' },
 };
 
+function TagManager({ contact, allTags, onUpdate }: {
+  contact: { id: string; tags: string[] };
+  allTags: { name: string; color: string }[];
+  onUpdate: (id: string, tags: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const availableTags = allTags.filter(t => !contact.tags.includes(t.name));
+
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      {contact.tags.map(tag => {
+        const tagData = allTags.find(t => t.name === tag);
+        return (
+          <Badge key={tag} variant="outline" className="text-[10px] h-5 gap-1 pr-1">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: tagData?.color || '#888' }} />
+            {tag}
+            <button onClick={(e) => { e.stopPropagation(); onUpdate(contact.id, contact.tags.filter(t => t !== tag)); }}
+              className="ml-0.5 hover:text-destructive">
+              <X className="h-2.5 w-2.5" />
+            </button>
+          </Badge>
+        );
+      })}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button className="h-5 w-5 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:bg-muted transition-colors">
+            <Plus className="h-2.5 w-2.5 text-muted-foreground" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-48 p-2" align="start">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Adicionar tag</p>
+          {availableTags.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Todas as tags já adicionadas</p>
+          ) : (
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {availableTags.map(tag => (
+                <button key={tag.name}
+                  onClick={() => { onUpdate(contact.id, [...contact.tags, tag.name]); setOpen(false); }}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors text-left">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                  {tag.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 export default function Conversations() {
   const { user } = useAuth();
   const { data: contacts, isLoading } = useContacts();
+  const { data: tags } = useTags();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [message, setMessage] = useState('');
@@ -31,6 +84,8 @@ export default function Conversations() {
   const { data: messages } = useMessages(selectedContact?.id || null);
   const sendMessage = useSendMessage();
   const updateContact = useUpdateContact();
+
+  const regularTags = tags?.filter(t => !t.is_channel_tag) || [];
 
   useEffect(() => {
     if (contacts?.length && !selectedId) setSelectedId(contacts[0].id);
@@ -60,6 +115,13 @@ export default function Conversations() {
     if (!selectedContact) return;
     updateContact.mutate({ id: selectedContact.id, ai_enabled: enabled }, {
       onSuccess: () => toast.success(enabled ? 'IA ativada' : 'IA desativada'),
+    });
+  };
+
+  const handleUpdateTags = (contactId: string, newTags: string[]) => {
+    updateContact.mutate({ id: contactId, tags: newTags }, {
+      onSuccess: () => toast.success('Tags atualizadas'),
+      onError: () => toast.error('Erro ao atualizar tags'),
     });
   };
 
@@ -144,6 +206,12 @@ export default function Conversations() {
                   {selectedContact.ai_enabled ? 'Ativa' : 'Desativada'}
                 </span>
               </div>
+            </div>
+
+            {/* Tags section */}
+            <div className="px-4 py-2 border-b flex items-center gap-2">
+              <Tag className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <TagManager contact={selectedContact} allTags={regularTags} onUpdate={handleUpdateTags} />
             </div>
 
             <ScrollArea className="flex-1 p-4">
