@@ -80,6 +80,10 @@ export default function Settings() {
   const [inviteDialog, setInviteDialog] = useState(false);
   const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'atendente' as 'admin' | 'atendente' });
 
+  // Edit member dialog
+  const [editMemberDialog, setEditMemberDialog] = useState(false);
+  const [editingMember, setEditingMember] = useState<{ id: string; name: string } | null>(null);
+
   const handleSaveTag = () => {
     if (!editingTag?.name.trim()) return;
     if (editingTag.id) {
