@@ -15,6 +15,7 @@ import Funnel from "./pages/Funnel";
 import Reports from "./pages/Reports";
 import PresetMessages from "./pages/PresetMessages";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
