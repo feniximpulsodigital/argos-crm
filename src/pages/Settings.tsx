@@ -148,6 +148,22 @@ export default function Settings() {
     });
   };
 
+  const handleDeleteMember = (memberId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este membro?')) return;
+    deleteUser.mutate(memberId, {
+      onSuccess: () => toast.success('Membro excluído'),
+      onError: (err: any) => toast.error(err.message || 'Erro ao excluir'),
+    });
+  };
+
+  const handleEditMember = () => {
+    if (!editingMember?.name.trim()) return;
+    updateProfile.mutate({ id: editingMember.id, name: editingMember.name }, {
+      onSuccess: () => { toast.success('Nome atualizado'); setEditMemberDialog(false); },
+      onError: () => toast.error('Erro ao atualizar nome'),
+    });
+  };
+
   if (user?.role !== 'admin') return null;
 
   const defaultColors = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
