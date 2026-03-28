@@ -1,3 +1,4 @@
+// ─── useSupabaseData.ts ─── split into focused hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
@@ -51,7 +52,6 @@ export function useSendMessage() {
     mutationFn: async (msg: { contact_id: string; content: string; sender_type: string; sender_name?: string; sender_user_id?: string }) => {
       const { error } = await supabase.from('messages').insert(msg);
       if (error) throw error;
-      // Update contact last_message_at
       await supabase.from('contacts').update({ last_message_at: new Date().toISOString() }).eq('id', msg.contact_id);
     },
     onSuccess: (_, vars) => {
@@ -124,13 +124,15 @@ export function useReorderPipelineStages() {
 
 // ─── Invite User ───
 export function useInviteUser() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: { email: string; name: string; role: 'admin' | 'atendente' }) => {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`https://cberrojynahjnplaezji.supabase.co/functions/v1/invite-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -140,6 +142,49 @@ export function useInviteUser() {
       }
       return res.json();
     },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profiles'] });
+      qc.invalidateQueries({ queryKey: ['user_roles'] });
+    },
+  });
+}
+
+// ─── Delete User ───
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`https://cberrojynahjnplaezji.supabase.co/functions/v1/delete-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Erro ao excluir usuário');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profiles'] });
+      qc.invalidateQueries({ queryKey: ['user_roles'] });
+    },
+  });
+}
+
+// ─── Update Profile (admin) ───
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      const { error } = await supabase.from('profiles').update({ name }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['profiles'] }),
   });
 }
 

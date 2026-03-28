@@ -15,6 +15,7 @@ import Funnel from "./pages/Funnel";
 import Reports from "./pages/Reports";
 import PresetMessages from "./pages/PresetMessages";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="/relatorios" element={<Reports />} />
                 <Route path="/mensagens-prontas" element={<PresetMessages />} />
                 <Route path="/configuracoes" element={<Settings />} />
+                <Route path="/perfil" element={<Profile />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

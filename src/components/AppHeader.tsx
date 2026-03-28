@@ -1,9 +1,10 @@
-import { Sun, Moon, Bell, Bot, LogOut, User } from 'lucide-react';
+import { Sun, Moon, Mail, Bot, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useContacts } from '@/hooks/useSupabaseData';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -14,6 +15,9 @@ export function AppHeader() {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { data: contacts } = useContacts();
+
+  const myLeadCount = contacts?.filter(c => c.assigned_agent_id === user?.id).length ?? 0;
 
   const handleLogout = () => {
     logout();
@@ -48,9 +52,13 @@ export function AppHeader() {
           {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
         </Button>
 
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-4 w-4" />
-          <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-accent text-[8px] text-accent-foreground flex items-center justify-center font-bold">3</span>
+        <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/minhas-conversas')}>
+          <Mail className="h-4 w-4" />
+          {myLeadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 rounded-full bg-accent text-[9px] text-accent-foreground flex items-center justify-center font-bold px-1">
+              {myLeadCount}
+            </span>
+          )}
         </Button>
 
         <DropdownMenu>
@@ -71,7 +79,7 @@ export function AppHeader() {
               <p className="text-xs text-muted-foreground capitalize mt-0.5">{user?.role}</p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/configuracoes')}>
+            <DropdownMenuItem onClick={() => navigate('/perfil')}>
               <User className="mr-2 h-4 w-4" />
               Perfil
             </DropdownMenuItem>

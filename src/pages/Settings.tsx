@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import {
   useTags, useCreateTag, useUpdateTag, useDeleteTag,
   usePipelineStages, useCreatePipelineStage, useUpdatePipelineStage, useDeletePipelineStage,
-  useProfiles, useUserRoles, useInviteUser,
+  useProfiles, useUserRoles, useInviteUser, useDeleteUser, useUpdateProfile,
   useAppSettings, useUpdateAppSetting,
 } from '@/hooks/useSupabaseData';
 
@@ -46,6 +46,8 @@ export default function Settings() {
   const updateStage = useUpdatePipelineStage();
   const deleteStage = useDeletePipelineStage();
   const inviteUser = useInviteUser();
+  const deleteUser = useDeleteUser();
+  const updateProfile = useUpdateProfile();
 
   const aiConfig = settings?.find(s => s.key === 'ai_config')?.value as any;
   const [aiName, setAiName] = useState('');
@@ -77,6 +79,10 @@ export default function Settings() {
   // Invite dialog
   const [inviteDialog, setInviteDialog] = useState(false);
   const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'atendente' as 'admin' | 'atendente' });
+
+  // Edit member dialog
+  const [editMemberDialog, setEditMemberDialog] = useState(false);
+  const [editingMember, setEditingMember] = useState<{ id: string; name: string } | null>(null);
 
   const handleSaveTag = () => {
     if (!editingTag?.name.trim()) return;
@@ -139,6 +145,22 @@ export default function Settings() {
         setInviteForm({ name: '', email: '', role: 'atendente' });
       },
       onError: (err: any) => toast.error(err.message || 'Erro ao convidar'),
+    });
+  };
+
+  const handleDeleteMember = (memberId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este membro?')) return;
+    deleteUser.mutate(memberId, {
+      onSuccess: () => toast.success('Membro excluído'),
+      onError: (err: any) => toast.error(err.message || 'Erro ao excluir'),
+    });
+  };
+
+  const handleEditMember = () => {
+    if (!editingMember?.name.trim()) return;
+    updateProfile.mutate({ id: editingMember.id, name: editingMember.name }, {
+      onSuccess: () => { toast.success('Nome atualizado'); setEditMemberDialog(false); },
+      onError: () => toast.error('Erro ao atualizar nome'),
     });
   };
 
@@ -315,7 +337,7 @@ export default function Settings() {
             <CardContent>
               <div className="space-y-2">
                 {teamMembers.map(member => (
-                  <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div key={member.id} className="group flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-3">
                       <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center text-sm font-medium text-secondary-foreground">
                         {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
@@ -328,6 +350,20 @@ export default function Settings() {
                     <div className="flex items-center gap-3">
                       <Badge variant={member.role === 'admin' ? 'default' : 'secondary'} className="text-xs capitalize">{member.role}</Badge>
                       <Badge variant="outline" className="text-xs">@{member.agent_tag}</Badge>
+                      <button
+                        onClick={() => { setEditingMember({ id: member.id, name: member.name }); setEditMemberDialog(true); }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Edit className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                      </button>
+                      {member.id !== user?.id && (
+                        <button
+                          onClick={() => handleDeleteMember(member.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -428,6 +464,25 @@ export default function Settings() {
               {inviteUser.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
               Criar usuário
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={editMemberDialog} onOpenChange={setEditMemberDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Membro</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input value={editingMember?.name || ''} onChange={e => setEditingMember(prev => prev ? { ...prev, name: e.target.value } : null)} placeholder="Nome completo" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditMemberDialog(false)}>Cancelar</Button>
+            <Button onClick={handleEditMember} disabled={updateProfile.isPending}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
