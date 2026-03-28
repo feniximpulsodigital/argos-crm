@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import {
   useTags, useCreateTag, useUpdateTag, useDeleteTag,
   usePipelineStages, useCreatePipelineStage, useUpdatePipelineStage, useDeletePipelineStage,
-  useProfiles, useUserRoles, useInviteUser,
+  useProfiles, useUserRoles, useInviteUser, useDeleteUser, useUpdateProfile,
   useAppSettings, useUpdateAppSetting,
 } from '@/hooks/useSupabaseData';
 
