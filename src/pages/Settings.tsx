@@ -46,6 +46,8 @@ export default function Settings() {
   const updateStage = useUpdatePipelineStage();
   const deleteStage = useDeletePipelineStage();
   const inviteUser = useInviteUser();
+  const deleteUser = useDeleteUser();
+  const updateProfile = useUpdateProfile();
 
   const aiConfig = settings?.find(s => s.key === 'ai_config')?.value as any;
   const [aiName, setAiName] = useState('');
