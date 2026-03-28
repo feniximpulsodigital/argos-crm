@@ -38,6 +38,7 @@ const App = () => (
                 <Route path="/relatorios" element={<Reports />} />
                 <Route path="/mensagens-prontas" element={<PresetMessages />} />
                 <Route path="/configuracoes" element={<Settings />} />
+                <Route path="/perfil" element={<Profile />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -337,7 +337,7 @@ export default function Settings() {
             <CardContent>
               <div className="space-y-2">
                 {teamMembers.map(member => (
-                  <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div key={member.id} className="group flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-3">
                       <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center text-sm font-medium text-secondary-foreground">
                         {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
@@ -350,6 +350,20 @@ export default function Settings() {
                     <div className="flex items-center gap-3">
                       <Badge variant={member.role === 'admin' ? 'default' : 'secondary'} className="text-xs capitalize">{member.role}</Badge>
                       <Badge variant="outline" className="text-xs">@{member.agent_tag}</Badge>
+                      <button
+                        onClick={() => { setEditingMember({ id: member.id, name: member.name }); setEditMemberDialog(true); }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Edit className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                      </button>
+                      {member.id !== user?.id && (
+                        <button
+                          onClick={() => handleDeleteMember(member.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
