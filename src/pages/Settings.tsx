@@ -467,6 +467,25 @@ export default function Settings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={editMemberDialog} onOpenChange={setEditMemberDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Membro</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input value={editingMember?.name || ''} onChange={e => setEditingMember(prev => prev ? { ...prev, name: e.target.value } : null)} placeholder="Nome completo" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditMemberDialog(false)}>Cancelar</Button>
+            <Button onClick={handleEditMember} disabled={updateProfile.isPending}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
