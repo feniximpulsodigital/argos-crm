@@ -38,12 +38,14 @@ export type Database = {
       contacts: {
         Row: {
           ai_enabled: boolean
+          anuncio_origem: string | null
           assigned_agent_id: string | null
           channel: string
           channel_tag: string
           created_at: string
           email: string | null
           id: string
+          id_canal_externo: string | null
           last_message_at: string | null
           name: string
           phone: string | null
@@ -53,12 +55,14 @@ export type Database = {
         }
         Insert: {
           ai_enabled?: boolean
+          anuncio_origem?: string | null
           assigned_agent_id?: string | null
           channel?: string
           channel_tag?: string
           created_at?: string
           email?: string | null
           id?: string
+          id_canal_externo?: string | null
           last_message_at?: string | null
           name: string
           phone?: string | null
@@ -68,12 +72,14 @@ export type Database = {
         }
         Update: {
           ai_enabled?: boolean
+          anuncio_origem?: string | null
           assigned_agent_id?: string | null
           channel?: string
           channel_tag?: string
           created_at?: string
           email?: string | null
           id?: string
+          id_canal_externo?: string | null
           last_message_at?: string | null
           name?: string
           phone?: string | null
@@ -85,28 +91,37 @@ export type Database = {
       }
       messages: {
         Row: {
+          canal: string | null
           contact_id: string
           content: string
           created_at: string
           id: string
+          id_mensagem_externa: string | null
+          parent_id_mensagem_externa: string | null
           sender_name: string | null
           sender_type: string
           sender_user_id: string | null
         }
         Insert: {
+          canal?: string | null
           contact_id: string
           content: string
           created_at?: string
           id?: string
+          id_mensagem_externa?: string | null
+          parent_id_mensagem_externa?: string | null
           sender_name?: string | null
           sender_type: string
           sender_user_id?: string | null
         }
         Update: {
+          canal?: string | null
           contact_id?: string
           content?: string
           created_at?: string
           id?: string
+          id_mensagem_externa?: string | null
+          parent_id_mensagem_externa?: string | null
           sender_name?: string | null
           sender_type?: string
           sender_user_id?: string | null
