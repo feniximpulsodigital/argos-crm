@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Search, Send, Bot, User, ArrowRight, Store, Globe, ShoppingCart, Loader2, Tag, Plus, X,
+  Search, Send, Bot, User, ArrowRight, Store, Globe, ShoppingCart, Loader2, Tag, Plus, X, Mic, Image,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useContacts, useMessages, useSendMessage, useUpdateContact, useTags } from '@/hooks/useSupabaseData';
@@ -115,6 +115,7 @@ export default function Conversations() {
     if (!selectedContact) return;
     updateContact.mutate({ id: selectedContact.id, ai_enabled: enabled }, {
       onSuccess: () => toast.success(enabled ? 'IA ativada' : 'IA desativada'),
+      onError: (err) => toast.error(`Erro ao ${enabled ? 'ativar' : 'desativar'} IA: ${err.message}`),
     });
   };
 
@@ -229,7 +230,31 @@ export default function Conversations() {
                           <span>{msg.sender_type === 'ia' ? 'IA' : msg.sender_name || 'Atendente'}</span>
                         </div>
                       )}
-                      <p>{msg.content}</p>
+                      {msg.type === 'audio' ? (
+                        <div className="flex items-center gap-2">
+                          <Mic className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                          {msg.content.startsWith('http') ? (
+                            <audio controls preload="none" className="max-w-[250px] h-8">
+                              <source src={msg.content} />
+                            </audio>
+                          ) : (
+                            <span className="text-sm italic opacity-70">🎤 Mensagem de áudio</span>
+                          )}
+                        </div>
+                      ) : msg.type === 'image' ? (
+                        <div>
+                          {msg.content.startsWith('http') ? (
+                            <img src={msg.content} alt="Imagem" className="max-w-[250px] rounded-lg cursor-pointer" onClick={() => window.open(msg.content, '_blank')} />
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Image className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm italic opacity-70">📷 {msg.content}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p>{msg.content}</p>
+                      )}
                       <span className="text-[10px] opacity-60 mt-1 block text-right">{format(parseISO(msg.created_at), 'HH:mm')}</span>
                     </div>
                   </div>
