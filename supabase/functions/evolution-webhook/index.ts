@@ -145,10 +145,10 @@ Deno.serve(async (req) => {
       .insert({
         contact_id: contact!.id,
         content: messageContent,
-        sender_type: 'client',
+        sender_type: senderType,
         sender_name: senderName,
         type: messageType,
-        status: 'received',
+        status: isFromMe ? 'delivered' : 'received',
         created_at: new Date(payload.messageTimestamp * 1000).toISOString(),
         canal: 'WhatsApp',
         id_mensagem_externa: messageId,
