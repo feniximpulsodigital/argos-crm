@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Search, Send, Bot, User, ArrowRight, Store, Globe, ShoppingCart, Loader2, Tag, Plus, X,
+  Search, Send, Bot, User, ArrowRight, Store, Globe, ShoppingCart, Loader2, Tag, Plus, X, Mic, Image,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useContacts, useMessages, useSendMessage, useUpdateContact, useTags } from '@/hooks/useSupabaseData';
