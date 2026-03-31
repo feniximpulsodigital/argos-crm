@@ -81,11 +81,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Payload inválido' }), { status: 400, headers });
     }
 
-    // Ignore messages sent by our own bot to prevent loops
-    if (payload.key.fromMe === true) {
-      console.log('Mensagem do próprio bot ignorada.');
-      return new Response(JSON.stringify({ message: 'Mensagem do próprio bot ignorada' }), { status: 200, headers });
-    }
+    const isFromMe = payload.key.fromMe === true;
 
     const remoteJid = payload.key.remoteJid;
     const messageType = payload.message.imageMessage
