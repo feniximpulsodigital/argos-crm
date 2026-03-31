@@ -163,28 +163,25 @@ Deno.serve(async (req) => {
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', contact!.id);
 
-    // 4. AI logic — disable for media, forward to n8n if active
-    let aiEnabled = contact!.ai_enabled;
-
+    // 4. AI logic — disable auto-reply for media, but ALWAYS forward to n8n
     if (messageType === 'image' || messageType === 'audio') {
       console.log(`Mensagem de ${messageType}. Desativando IA para lead ${contact!.id}.`);
-      aiEnabled = false;
       await supabase
         .from('contacts')
         .update({ ai_enabled: false })
         .eq('id', contact!.id);
     }
 
-    if (aiEnabled) {
-      const { data: recentMessages } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('contact_id', contact!.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
+    // Always send to n8n so all messages are tracked
+    const { data: recentMessages } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('contact_id', contact!.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
 
-      await sendToN8n(contact!, savedMessage!, recentMessages || []);
-    }
+    await sendToN8n(contact!, savedMessage!, recentMessages || []);
+    console.log(`Mensagem processada com sucesso para contact ${contact!.id}. Tipo: ${messageType}`);
 
     return new Response(
       JSON.stringify({ message: 'Webhook processado com sucesso' }),
