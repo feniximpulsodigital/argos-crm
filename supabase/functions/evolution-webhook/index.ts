@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
       .insert({
         contact_id: contact!.id,
         content: messageContent,
-        sender_type: 'contact',
+        sender_type: 'client',
         sender_name: senderName,
         type: messageType,
         status: 'received',
