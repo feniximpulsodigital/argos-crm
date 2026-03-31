@@ -167,25 +167,28 @@ Deno.serve(async (req) => {
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', contact!.id);
 
-    // 4. AI logic — disable auto-reply for media, but ALWAYS forward to n8n
-    if (messageType === 'image' || messageType === 'audio') {
-      console.log(`Mensagem de ${messageType}. Desativando IA para lead ${contact!.id}.`);
-      await supabase
-        .from('contacts')
-        .update({ ai_enabled: false })
-        .eq('id', contact!.id);
+    // 4. AI logic — only for incoming messages
+    if (!isFromMe) {
+      if (messageType === 'image' || messageType === 'audio') {
+        console.log(`Mensagem de ${messageType}. Desativando IA para lead ${contact!.id}.`);
+        await supabase
+          .from('contacts')
+          .update({ ai_enabled: false })
+          .eq('id', contact!.id);
+      }
+
+      // Send to n8n only for incoming messages
+      const { data: recentMessages } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('contact_id', contact!.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      await sendToN8n(contact!, savedMessage!, recentMessages || []);
     }
 
-    // Always send to n8n so all messages are tracked
-    const { data: recentMessages } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('contact_id', contact!.id)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    await sendToN8n(contact!, savedMessage!, recentMessages || []);
-    console.log(`Mensagem processada com sucesso para contact ${contact!.id}. Tipo: ${messageType}`);
+    console.log(`Mensagem processada com sucesso para contact ${contact!.id}. Tipo: ${messageType}, fromMe: ${isFromMe}`);
 
     return new Response(
       JSON.stringify({ message: 'Webhook processado com sucesso' }),
