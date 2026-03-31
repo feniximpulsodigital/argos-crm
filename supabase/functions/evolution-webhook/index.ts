@@ -63,12 +63,21 @@ Deno.serve(async (req) => {
   );
 
   try {
-    const payload: EvolutionMessage = await req.json();
-    console.log('Webhook Evolution API recebido:', JSON.stringify(payload, null, 2));
+    const rawPayload = await req.json();
+    console.log('Payload bruto recebido:', JSON.stringify(rawPayload, null, 2));
+
+    // Evolution API wraps the message inside { event, data }
+    const eventType = rawPayload.event as string;
+    if (eventType !== 'messages.upsert') {
+      console.log(`Evento '${eventType}' ignorado (não é messages.upsert).`);
+      return new Response(JSON.stringify({ message: `Evento '${eventType}' ignorado` }), { status: 200, headers });
+    }
+
+    const payload = rawPayload.data as EvolutionMessage;
 
     // Validate payload
     if (!payload?.key?.remoteJid || !payload?.key?.id || !payload?.message) {
-      console.error('Payload inválido:', payload);
+      console.error('Payload inválido após extração de data:', payload);
       return new Response(JSON.stringify({ error: 'Payload inválido' }), { status: 400, headers });
     }
 
