@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 
   try {
     const rawPayload = await req.json();
-    console.log('Payload bruto recebido:', JSON.stringify(rawPayload, null, 2));
+    console.log('Evento recebido:', rawPayload.event, 'JID:', rawPayload.data?.key?.remoteJid);
 
     // Evolution API wraps the message inside { event, data }
     const eventType = rawPayload.event as string;
@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
     // 1. Find or create contact
     let { data: contact, error: contactError } = await supabase
       .from('contacts')
-      .select('*')
+      .select('id, name, phone, ai_enabled, pipeline_stage, channel_tag, tags')
       .eq('phone', remoteJid)
       .single();
 
@@ -161,34 +161,36 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Erro ao salvar mensagem' }), { status: 500, headers });
     }
 
-    // 3. Update last_message_at
-    await supabase
+    // 3. Update last_message_at (fire-and-forget)
+    supabase
       .from('contacts')
       .update({ last_message_at: new Date().toISOString() })
-      .eq('id', contact!.id);
+      .eq('id', contact!.id)
+      .then(() => {});
 
-    // 4. AI logic — only for incoming messages
+    // 4. AI logic — only for incoming messages (fire-and-forget n8n call)
     if (!isFromMe) {
       if (messageType === 'image' || messageType === 'audio') {
-        console.log(`Mensagem de ${messageType}. Desativando IA para lead ${contact!.id}.`);
-        await supabase
+        supabase
           .from('contacts')
           .update({ ai_enabled: false })
-          .eq('id', contact!.id);
+          .eq('id', contact!.id)
+          .then(() => console.log(`IA desativada para lead ${contact!.id} (mídia)`));
       }
 
-      // Send to n8n only for incoming messages
-      const { data: recentMessages } = await supabase
+      // Fire-and-forget: send to n8n without blocking response
+      supabase
         .from('messages')
-        .select('*')
+        .select('id, content, sender_type, sender_name, type, created_at')
         .eq('contact_id', contact!.id)
         .order('created_at', { ascending: false })
-        .limit(20);
-
-      await sendToN8n(contact!, savedMessage!, recentMessages || []);
+        .limit(5)
+        .then(({ data: recentMessages }) => {
+          sendToN8n(contact!, savedMessage!, recentMessages || []);
+        });
     }
 
-    console.log(`Mensagem processada com sucesso para contact ${contact!.id}. Tipo: ${messageType}, fromMe: ${isFromMe}`);
+    console.log(`Mensagem processada: contact ${contact!.id}, tipo: ${messageType}, fromMe: ${isFromMe}`);
 
     return new Response(
       JSON.stringify({ message: 'Webhook processado com sucesso' }),

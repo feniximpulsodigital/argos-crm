@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useContacts, useMessages, useSendMessage, useUpdateContact, useTags } from '@/hooks/useSupabaseData';
+import { useRealtimeSync } from '@/hooks/useRealtimeMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO } from 'date-fns';
 
@@ -74,6 +75,7 @@ function TagManager({ contact, allTags, onUpdate }: {
 
 export default function Conversations() {
   const { user } = useAuth();
+  useRealtimeSync();
   const { data: contacts, isLoading } = useContacts();
   const { data: tags } = useTags();
   const [selectedId, setSelectedId] = useState<string | null>(null);
