@@ -101,6 +101,8 @@ export type Database = {
           sender_name: string | null
           sender_type: string
           sender_user_id: string | null
+          status: string
+          type: string
         }
         Insert: {
           canal?: string | null
@@ -113,6 +115,8 @@ export type Database = {
           sender_name?: string | null
           sender_type: string
           sender_user_id?: string | null
+          status?: string
+          type?: string
         }
         Update: {
           canal?: string | null
@@ -125,6 +129,8 @@ export type Database = {
           sender_name?: string | null
           sender_type?: string
           sender_user_id?: string | null
+          status?: string
+          type?: string
         }
         Relationships: [
           {
