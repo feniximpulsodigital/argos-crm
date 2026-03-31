@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 
   try {
     const rawPayload = await req.json();
-    console.log('Payload bruto recebido:', JSON.stringify(rawPayload, null, 2));
+    console.log('Evento recebido:', rawPayload.event, 'JID:', rawPayload.data?.key?.remoteJid);
 
     // Evolution API wraps the message inside { event, data }
     const eventType = rawPayload.event as string;
