@@ -96,7 +96,8 @@ Deno.serve(async (req) => {
       (payload.message.audioMessage?.url ? payload.message.audioMessage.url : null) ||
       'Mensagem de mídia';
     const messageId = payload.key.id;
-    const senderName = payload.pushName || remoteJid;
+    const senderName = isFromMe ? 'IA' : (payload.pushName || remoteJid);
+    const senderType = isFromMe ? 'ia' : 'client';
 
     // 1. Find or create contact
     let { data: contact, error: contactError } = await supabase
