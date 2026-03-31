@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Send, Bot, User, Loader2 } from 'lucide-react';
+import { Search, Send, Bot, User, Loader2, Mic, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContacts, useMessages, useSendMessage } from '@/hooks/useSupabaseData';
