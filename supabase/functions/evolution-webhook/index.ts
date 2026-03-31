@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
     // 1. Find or create contact
     let { data: contact, error: contactError } = await supabase
       .from('contacts')
-      .select('*')
+      .select('id, name, phone, ai_enabled, pipeline_stage, channel_tag, tags')
       .eq('phone', remoteJid)
       .single();
 
