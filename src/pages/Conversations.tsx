@@ -75,6 +75,7 @@ function TagManager({ contact, allTags, onUpdate }: {
 
 export default function Conversations() {
   const { user } = useAuth();
+  useRealtimeSync();
   const { data: contacts, isLoading } = useContacts();
   const { data: tags } = useTags();
   const [selectedId, setSelectedId] = useState<string | null>(null);
