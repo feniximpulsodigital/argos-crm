@@ -51,35 +51,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check existing session
-    const init = async () => {
+    let mounted = true;
+
+    const loadUserProfile = async (supabaseUser: SupabaseUser | null) => {
+      if (!mounted) return;
+
+      if (!supabaseUser) {
+        setUser(null);
+        return;
+      }
+
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (session?.user && !error) {
-          const profile = await buildUserProfile(session.user);
-          setUser(profile);
-        }
+        const profile = await buildUserProfile(supabaseUser);
+        if (mounted) setUser(profile);
       } catch (e) {
-        console.error('Auth init error:', e);
-      } finally {
-        setLoading(false);
+        console.error('Auth profile load error:', e);
+        if (mounted) setUser(null);
       }
     };
-    init();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          const profile = await buildUserProfile(session.user);
-          setUser(profile);
-        } else if (event === 'SIGNED_OUT') {
+    // Listen for auth changes (non-blocking: do not await here)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        return;
+      }
+
+      if (session?.user) {
+        void loadUserProfile(session.user);
+      }
+    });
+
+    // Check existing session
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) {
+          console.error('Auth init error:', error);
+          return;
+        }
+
+        if (session?.user) {
+          void loadUserProfile(session.user);
+        } else {
           setUser(null);
         }
-      }
-    );
+      })
+      .catch((e) => {
+        console.error('Auth init error:', e);
+        setUser(null);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
