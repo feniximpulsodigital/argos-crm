@@ -115,6 +115,7 @@ export default function Conversations() {
     if (!selectedContact) return;
     updateContact.mutate({ id: selectedContact.id, ai_enabled: enabled }, {
       onSuccess: () => toast.success(enabled ? 'IA ativada' : 'IA desativada'),
+      onError: (err) => toast.error(`Erro ao ${enabled ? 'ativar' : 'desativar'} IA: ${err.message}`),
     });
   };
 
