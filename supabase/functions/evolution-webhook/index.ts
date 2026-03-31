@@ -81,11 +81,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Payload inválido' }), { status: 400, headers });
     }
 
-    // Ignore messages sent by our own bot to prevent loops
-    if (payload.key.fromMe === true) {
-      console.log('Mensagem do próprio bot ignorada.');
-      return new Response(JSON.stringify({ message: 'Mensagem do próprio bot ignorada' }), { status: 200, headers });
-    }
+    const isFromMe = payload.key.fromMe === true;
 
     const remoteJid = payload.key.remoteJid;
     const messageType = payload.message.imageMessage
@@ -100,7 +96,8 @@ Deno.serve(async (req) => {
       (payload.message.audioMessage?.url ? payload.message.audioMessage.url : null) ||
       'Mensagem de mídia';
     const messageId = payload.key.id;
-    const senderName = payload.pushName || remoteJid;
+    const senderName = isFromMe ? 'IA' : (payload.pushName || remoteJid);
+    const senderType = isFromMe ? 'ia' : 'client';
 
     // 1. Find or create contact
     let { data: contact, error: contactError } = await supabase
@@ -110,6 +107,11 @@ Deno.serve(async (req) => {
       .single();
 
     if (contactError && contactError.code === 'PGRST116') {
+      // For fromMe messages, we need a contact to exist — skip if not found
+      if (isFromMe) {
+        console.log(`Mensagem fromMe mas lead não encontrado para ${remoteJid}. Ignorando.`);
+        return new Response(JSON.stringify({ message: 'Lead não encontrado para mensagem fromMe' }), { status: 200, headers });
+      }
       console.log(`Lead não encontrado para ${remoteJid}. Criando novo...`);
       const { data: newContact, error: createError } = await supabase
         .from('contacts')
@@ -143,10 +145,10 @@ Deno.serve(async (req) => {
       .insert({
         contact_id: contact!.id,
         content: messageContent,
-        sender_type: 'client',
+        sender_type: senderType,
         sender_name: senderName,
         type: messageType,
-        status: 'received',
+        status: isFromMe ? 'delivered' : 'received',
         created_at: new Date(payload.messageTimestamp * 1000).toISOString(),
         canal: 'WhatsApp',
         id_mensagem_externa: messageId,
@@ -165,25 +167,28 @@ Deno.serve(async (req) => {
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', contact!.id);
 
-    // 4. AI logic — disable auto-reply for media, but ALWAYS forward to n8n
-    if (messageType === 'image' || messageType === 'audio') {
-      console.log(`Mensagem de ${messageType}. Desativando IA para lead ${contact!.id}.`);
-      await supabase
-        .from('contacts')
-        .update({ ai_enabled: false })
-        .eq('id', contact!.id);
+    // 4. AI logic — only for incoming messages
+    if (!isFromMe) {
+      if (messageType === 'image' || messageType === 'audio') {
+        console.log(`Mensagem de ${messageType}. Desativando IA para lead ${contact!.id}.`);
+        await supabase
+          .from('contacts')
+          .update({ ai_enabled: false })
+          .eq('id', contact!.id);
+      }
+
+      // Send to n8n only for incoming messages
+      const { data: recentMessages } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('contact_id', contact!.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      await sendToN8n(contact!, savedMessage!, recentMessages || []);
     }
 
-    // Always send to n8n so all messages are tracked
-    const { data: recentMessages } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('contact_id', contact!.id)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    await sendToN8n(contact!, savedMessage!, recentMessages || []);
-    console.log(`Mensagem processada com sucesso para contact ${contact!.id}. Tipo: ${messageType}`);
+    console.log(`Mensagem processada com sucesso para contact ${contact!.id}. Tipo: ${messageType}, fromMe: ${isFromMe}`);
 
     return new Response(
       JSON.stringify({ message: 'Webhook processado com sucesso' }),
