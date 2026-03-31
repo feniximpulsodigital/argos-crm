@@ -88,15 +88,17 @@ Deno.serve(async (req) => {
     }
 
     const remoteJid = payload.key.remoteJid;
-    const messageContent =
-      payload.message.conversation ||
-      payload.message.imageMessage?.caption ||
-      'Mensagem de mídia';
     const messageType = payload.message.imageMessage
       ? 'image'
       : payload.message.audioMessage
         ? 'audio'
         : 'text';
+    // For media, try to save the URL; fallback to caption or placeholder
+    const messageContent =
+      payload.message.conversation ||
+      (payload.message.imageMessage?.url ? payload.message.imageMessage.url : payload.message.imageMessage?.caption) ||
+      (payload.message.audioMessage?.url ? payload.message.audioMessage.url : null) ||
+      'Mensagem de mídia';
     const messageId = payload.key.id;
     const senderName = payload.pushName || remoteJid;
 
