@@ -107,6 +107,11 @@ Deno.serve(async (req) => {
       .single();
 
     if (contactError && contactError.code === 'PGRST116') {
+      // For fromMe messages, we need a contact to exist — skip if not found
+      if (isFromMe) {
+        console.log(`Mensagem fromMe mas lead não encontrado para ${remoteJid}. Ignorando.`);
+        return new Response(JSON.stringify({ message: 'Lead não encontrado para mensagem fromMe' }), { status: 200, headers });
+      }
       console.log(`Lead não encontrado para ${remoteJid}. Criando novo...`);
       const { data: newContact, error: createError } = await supabase
         .from('contacts')
