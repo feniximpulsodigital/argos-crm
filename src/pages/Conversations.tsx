@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useContacts, useMessages, useSendMessage, useUpdateContact, useTags } from '@/hooks/useSupabaseData';
+import { useRealtimeSync } from '@/hooks/useRealtimeMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO } from 'date-fns';
 
