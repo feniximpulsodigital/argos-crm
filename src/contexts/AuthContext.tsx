@@ -78,27 +78,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (session?.user) {
+        // Don't reload profile if login() already set it
         void loadUserProfile(session.user);
       }
     });
 
-    // Check existing session
+    // Check existing session — await profile before clearing loading
     supabase.auth.getSession()
-      .then(({ data: { session }, error }) => {
+      .then(async ({ data: { session }, error }) => {
         if (error) {
           console.error('Auth init error:', error);
+          if (mounted) setUser(null);
           return;
         }
 
         if (session?.user) {
-          void loadUserProfile(session.user);
+          await loadUserProfile(session.user);
         } else {
-          setUser(null);
+          if (mounted) setUser(null);
         }
       })
       .catch((e) => {
         console.error('Auth init error:', e);
-        setUser(null);
+        if (mounted) setUser(null);
       })
       .finally(() => {
         if (mounted) setLoading(false);
