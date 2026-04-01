@@ -1,0 +1,1 @@
+UPDATE app_settings SET value = jsonb_set(value, '{site_url}', '"https://mobiliaurbana.com.br"') WHERE key = 'business_info';
