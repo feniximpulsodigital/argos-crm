@@ -42,8 +42,8 @@ const SUPPORTED_EVENTS = new Set([
   'send-message',
 ]);
 
-function normalizeJid(jid: string) {
-  return jid.split(':')[0]?.trim();
+function normalizeJid(jid: string): string {
+  return jid.split(':')[0]?.trim() || jid;
 }
 
 function buildJidCandidates(remoteJid: string) {
@@ -179,7 +179,8 @@ Deno.serve(async (req) => {
 
   try {
     const rawPayload = (await req.json()) as EvolutionWebhookPayload;
-    console.log('Evento recebido:', rawPayload.event, 'JID:', rawPayload.data?.key?.remoteJid);
+    const rawDataForLog = rawPayload.data as { key?: { remoteJid?: string } } | undefined;
+    console.log('Evento recebido:', rawPayload.event, 'JID:', rawDataForLog?.key?.remoteJid);
 
     const eventType = rawPayload.event as string;
     if (!SUPPORTED_EVENTS.has(eventType)) {
