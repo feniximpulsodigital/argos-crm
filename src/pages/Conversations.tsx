@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,16 @@ import {
   Search, Send, Bot, User, ArrowRight, Store, Globe, ShoppingCart, Loader2, Tag, Plus, X, Mic, Image,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useContacts, useMessages, useSendMessage, useUpdateContact, useTags } from '@/hooks/useSupabaseData';
+import {
+  useContacts,
+  useMessages,
+  useSendMessage,
+  useUpdateContact,
+  useTags,
+  useProfiles,
+  useUserRoles,
+  useAppSettings,
+} from '@/hooks/useSupabaseData';
 import { useRealtimeSync } from '@/hooks/useRealtimeMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO } from 'date-fns';
@@ -78,14 +87,37 @@ export default function Conversations() {
   useRealtimeSync();
   const { data: contacts, isLoading } = useContacts();
   const { data: tags } = useTags();
+  const { data: profiles } = useProfiles();
+  const { data: roles } = useUserRoles();
+  const { data: settings } = useAppSettings();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [message, setMessage] = useState('');
+  const [assignPopoverOpen, setAssignPopoverOpen] = useState(false);
 
   const selectedContact = contacts?.find(c => c.id === selectedId) || contacts?.[0] || null;
   const { data: messages } = useMessages(selectedContact?.id || null);
   const sendMessage = useSendMessage();
   const updateContact = useUpdateContact();
+
+  const businessInfo = settings?.find(s => s.key === 'business_info')?.value as {
+    site_url?: string;
+    showroom_address?: string;
+  } | undefined;
+
+  const siteUrl = businessInfo?.site_url?.trim() || (typeof window !== 'undefined' ? window.location.origin : '');
+  const showroomAddress = businessInfo?.showroom_address?.trim() || 'Nosso showroom fica no endereço principal da empresa.';
+
+  const attendants = useMemo(() => {
+    if (!profiles?.length) return [];
+    const attendantIds = new Set((roles || []).filter(r => r.role === 'atendente').map(r => r.user_id));
+
+    return profiles.filter(profile => {
+      if (!profile.is_active) return false;
+      if (attendantIds.size === 0) return true;
+      return attendantIds.has(profile.id);
+    });
+  }, [profiles, roles]);
 
   const regularTags = tags?.filter(t => !t.is_channel_tag) || [];
 
@@ -118,6 +150,31 @@ export default function Conversations() {
     updateContact.mutate({ id: selectedContact.id, ai_enabled: enabled }, {
       onSuccess: () => toast.success(enabled ? 'IA ativada' : 'IA desativada'),
       onError: (err) => toast.error(`Erro ao ${enabled ? 'ativar' : 'desativar'} IA: ${err.message}`),
+    });
+  };
+
+  const sendQuickMessage = (content: string, successText: string) => {
+    if (!selectedContact || !content.trim()) return;
+    sendMessage.mutate({
+      contact_id: selectedContact.id,
+      content,
+      sender_type: 'human',
+      sender_name: user?.name || 'Atendente',
+      sender_user_id: user?.id,
+    }, {
+      onSuccess: () => toast.success(successText),
+      onError: () => toast.error('Erro ao enviar mensagem'),
+    });
+  };
+
+  const handleAssignToAttendant = (agentId: string, agentName: string) => {
+    if (!selectedContact) return;
+    updateContact.mutate({ id: selectedContact.id, assigned_agent_id: agentId }, {
+      onSuccess: () => {
+        toast.success(`Lead encaminhado para ${agentName}`);
+        setAssignPopoverOpen(false);
+      },
+      onError: () => toast.error('Erro ao encaminhar lead'),
     });
   };
 
@@ -268,13 +325,47 @@ export default function Conversations() {
             </ScrollArea>
 
             <div className="px-4 py-2 border-t flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => toast.info('Encaminhar para vendedor')}>
-                <ArrowRight className="mr-1 h-3 w-3" /> Vendedor
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => toast.info('Encaminhar para loja')}>
+              <Popover open={assignPopoverOpen} onOpenChange={setAssignPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <ArrowRight className="mr-1 h-3 w-3" /> Atendente
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2" align="start">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Encaminhar para atendente</p>
+                  {attendants.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhum atendente ativo encontrado</p>
+                  ) : (
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {attendants.map(attendant => (
+                        <button
+                          key={attendant.id}
+                          onClick={() => handleAssignToAttendant(attendant.id, attendant.name)}
+                          className="flex items-center justify-between w-full px-2 py-1.5 rounded text-sm hover:bg-muted transition-colors text-left"
+                        >
+                          <span className="truncate">{attendant.name}</span>
+                          {selectedContact?.assigned_agent_id === attendant.id && (
+                            <Badge variant="outline" className="text-[10px] h-5">Atual</Badge>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => sendQuickMessage(`Endereço do showroom: ${showroomAddress}`, 'Endereço do showroom enviado')}
+              >
                 <Store className="mr-1 h-3 w-3" /> Loja
               </Button>
-              <Button size="sm" variant="outline" onClick={() => toast.info('Encaminhar para site')}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => sendQuickMessage(`Confira nosso site: ${siteUrl}`, 'Link do site enviado')}
+              >
                 <Globe className="mr-1 h-3 w-3" /> Site
               </Button>
               <Button size="sm" variant="accent" onClick={() => {
