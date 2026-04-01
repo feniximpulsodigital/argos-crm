@@ -1,0 +1,1 @@
+INSERT INTO app_settings (key, value) VALUES ('business_info', '{"showroom_address": "Rua José Antônio Pereira, 1904 - Ipiranga, São José - SC", "site_url": ""}'::jsonb);
