@@ -147,8 +147,21 @@ export default function Conversations() {
 
   const handleToggleAi = (enabled: boolean) => {
     if (!selectedContact) return;
-    updateContact.mutate({ id: selectedContact.id, ai_enabled: enabled }, {
-      onSuccess: () => toast.success(enabled ? 'IA ativada' : 'IA desativada'),
+    const updates: Record<string, unknown> = { id: selectedContact.id, ai_enabled: enabled };
+
+    // When disabling AI, auto-assign to first attendant
+    if (!enabled && attendants.length > 0 && !selectedContact.assigned_agent_id) {
+      updates.assigned_agent_id = attendants[0].id;
+    }
+
+    updateContact.mutate(updates as any, {
+      onSuccess: () => {
+        if (!enabled && attendants.length > 0 && !selectedContact.assigned_agent_id) {
+          toast.success(`IA desativada. Lead encaminhado para ${attendants[0].name}`);
+        } else {
+          toast.success(enabled ? 'IA ativada' : 'IA desativada');
+        }
+      },
       onError: (err) => toast.error(`Erro ao ${enabled ? 'ativar' : 'desativar'} IA: ${err.message}`),
     });
   };
