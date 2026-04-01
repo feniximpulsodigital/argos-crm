@@ -50,9 +50,24 @@ export function useSendMessage() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (msg: { contact_id: string; content: string; sender_type: string; sender_name?: string; sender_user_id?: string }) => {
-      const { error } = await supabase.from('messages').insert(msg);
-      if (error) throw error;
-      await supabase.from('contacts').update({ last_message_at: new Date().toISOString() }).eq('id', msg.contact_id);
+      // Use edge function to send via Evolution API + save in DB
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`https://cberrojynahjnplaezji.supabase.co/functions/v1/send-message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          contact_id: msg.contact_id,
+          content: msg.content,
+          sender_name: msg.sender_name,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Erro ao enviar mensagem');
+      }
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['messages', vars.contact_id] });
