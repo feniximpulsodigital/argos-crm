@@ -62,20 +62,27 @@ Deno.serve(async (req) => {
     const evolutionKey = Deno.env.get('EVOLUTION_API_KEY')!;
     const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME')!;
 
-    const evolutionResponse = await fetch(
-      `${evolutionUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': evolutionKey,
-        },
-        body: JSON.stringify({
-          number,
-          text: content,
-        }),
+    if (!evolutionUrl || !evolutionKey || !instanceName) {
+      console.error('Missing Evolution API secrets');
+      return new Response(JSON.stringify({ error: 'Configuração da Evolution API incompleta' }), { status: 500, headers });
+    }
+
+    // Build URL: strip trailing slash and any existing path segments to get base URL
+    const baseUrl = evolutionUrl.replace(/\/+$/, '').replace(/\/message\/send\w+\/.*$/, '').replace(/\/message\/send\w+$/, '');
+    const sendUrl = `${baseUrl}/message/sendText/${instanceName}`;
+    console.log('Evolution send URL:', sendUrl);
+
+    const evolutionResponse = await fetch(sendUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': evolutionKey,
       },
-    );
+      body: JSON.stringify({
+        number,
+        text: content,
+      }),
+    });
 
     if (!evolutionResponse.ok) {
       const errBody = await evolutionResponse.text();
