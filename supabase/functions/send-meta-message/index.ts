@@ -11,21 +11,34 @@ Deno.serve(async (req) => {
   const headers = { ...corsHeaders, 'Content-Type': 'application/json' };
 
   try {
-    // Auth
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
-    );
+    const token = authHeader.replace('Bearer ', '');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const isServiceRole = token === serviceRoleKey;
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
+    let userId: string | null = null;
+    let senderType = 'ia';
+    let defaultSenderName = 'IA';
+
+    if (!isServiceRole) {
+      // Authenticated user (human agent)
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+      );
+
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
+      }
+      userId = user.id;
+      senderType = 'human';
+      defaultSenderName = 'Atendente';
     }
 
     const { contact_id, content, sender_name, reply_type } = await req.json();
@@ -35,7 +48,7 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      serviceRoleKey,
       { auth: { persistSession: false } },
     );
 
@@ -61,10 +74,9 @@ Deno.serve(async (req) => {
 
     let externalMessageId: string | null = null;
     const channel = contact.channel || contact.channel_tag || 'facebook';
-    const effectiveReplyType = reply_type || 'message'; // 'message' or 'comment'
+    const effectiveReplyType = reply_type || 'message';
 
     if (effectiveReplyType === 'comment') {
-      // Reply to a comment — find the parent comment/post id
       const { data: lastMsg } = await adminClient
         .from('messages')
         .select('id_mensagem_externa, parent_id_mensagem_externa')
@@ -79,14 +91,10 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Comentário original não encontrado para responder' }), { status: 400, headers });
       }
 
-      // Reply to the comment
       const commentRes = await fetch(`${GRAPH_API}/${commentId}/replies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: content,
-          access_token: pageAccessToken,
-        }),
+        body: JSON.stringify({ message: content, access_token: pageAccessToken }),
       });
 
       if (!commentRes.ok) {
@@ -97,11 +105,8 @@ Deno.serve(async (req) => {
 
       const commentResult = await commentRes.json();
       externalMessageId = commentResult.id || null;
-
     } else {
-      // Send DM via Messenger / IG Direct
       const endpoint = `${GRAPH_API}/me/messages`;
-
       const msgRes = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,13 +127,13 @@ Deno.serve(async (req) => {
       externalMessageId = msgResult.message_id || null;
     }
 
-    // Save outgoing message in DB
+    // Save outgoing message
     const { error: insertError } = await adminClient.from('messages').insert({
       contact_id,
       content,
-      sender_type: 'human',
-      sender_name: sender_name || 'Atendente',
-      sender_user_id: user.id,
+      sender_type: senderType,
+      sender_name: sender_name || defaultSenderName,
+      sender_user_id: userId,
       type: 'text',
       status: 'delivered',
       canal: channel,
