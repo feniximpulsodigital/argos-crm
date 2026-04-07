@@ -295,6 +295,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      move_inactive_leads_to_fora_de_funil: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "atendente"
