@@ -1,0 +1,1 @@
+UPDATE contacts SET channel = 'Instagram Direct', channel_tag = 'instagram_direct' WHERE id = '2b2aab9a-6d52-4a6e-b47c-0f63cc14355e';
