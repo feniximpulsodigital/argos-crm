@@ -27,25 +27,21 @@ Deno.serve(async (req) => {
     let defaultSenderName = 'IA';
 
     if (!isServiceRole) {
+      // Authenticated user (human agent)
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_ANON_KEY')!,
-        { auth: { persistSession: false } },
+        { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } },
       );
 
-      const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-      const claims = claimsData?.claims as { sub?: string; role?: string } | undefined;
-
-      if (claims?.role === 'service_role') {
-        isServiceRole = true;
-      } else if (claims?.sub) {
-        userId = claims.sub;
-        senderType = 'human';
-        defaultSenderName = 'Atendente';
-      } else {
-        console.error('send-meta-message auth failed: invalid token', claimsError?.message ?? 'missing claims');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('send-meta-message auth failed:', authError?.message ?? 'no user');
         return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
       }
+      userId = user.id;
+      senderType = 'human';
+      defaultSenderName = 'Atendente';
     }
 
     const { contact_id, content, sender_name, reply_type } = await req.json();
