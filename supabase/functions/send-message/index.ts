@@ -48,6 +48,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Contato não encontrado' }), { status: 404, headers });
     }
 
+    // Block non-WhatsApp contacts — they should use send-meta-message instead
+    const metaChannels = ['messenger', 'instagram', 'facebook'];
+    if (metaChannels.includes((contact.channel_tag || '').toLowerCase())) {
+      return new Response(JSON.stringify({ error: 'Este contato é do canal ' + contact.channel_tag + '. Use a função send-meta-message.' }), { status: 400, headers });
+    }
+
     // Determine destination number
     const destination = contact.id_canal_externo || contact.phone;
     if (!destination) {
