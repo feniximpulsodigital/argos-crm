@@ -49,10 +49,14 @@ export function useMessages(contactId: string | null) {
 export function useSendMessage() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (msg: { contact_id: string; content: string; sender_type: string; sender_name?: string; sender_user_id?: string }) => {
-      // Use edge function to send via Evolution API + save in DB
+    mutationFn: async (msg: { contact_id: string; content: string; sender_type: string; sender_name?: string; sender_user_id?: string; channel?: string; reply_type?: string }) => {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`https://cberrojynahjnplaezji.supabase.co/functions/v1/send-message`, {
+      // Route to the correct edge function based on channel
+      const metaChannels = ['messenger', 'instagram', 'facebook'];
+      const isMeta = msg.channel && metaChannels.includes(msg.channel.toLowerCase());
+      const functionName = isMeta ? 'send-meta-message' : 'send-message';
+
+      const res = await fetch(`https://cberrojynahjnplaezji.supabase.co/functions/v1/${functionName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -62,6 +66,7 @@ export function useSendMessage() {
           contact_id: msg.contact_id,
           content: msg.content,
           sender_name: msg.sender_name,
+          ...(isMeta && msg.reply_type ? { reply_type: msg.reply_type } : {}),
         }),
       });
       if (!res.ok) {
