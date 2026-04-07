@@ -128,9 +128,9 @@ async function processComment(entry: any, change: any, supabase: ReturnType<type
 
   if (!senderId || !commentId) return;
 
-  // Determine channel
-  const channel = change.field === 'comments' ? 'Instagram' : 'Facebook';
-  const channelTag = change.field === 'comments' ? 'instagram' : 'facebook';
+  // Determine channel - differentiate Facebook vs Instagram comments
+  const channel = change.field === 'comments' ? 'Comentário Instagram' : 'Comentário Facebook';
+  const channelTag = change.field === 'comments' ? 'comentario_instagram' : 'comentario_facebook';
 
   await upsertContactAndSaveMessage(supabase, {
     externalId: senderId,
