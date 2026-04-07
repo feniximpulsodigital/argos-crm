@@ -1,0 +1,149 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { corsHeaders } from '../_shared/cors.ts';
+
+const GRAPH_API = 'https://graph.facebook.com/v21.0';
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const headers = { ...corsHeaders, 'Content-Type': 'application/json' };
+
+  try {
+    // Auth
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+    );
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
+    }
+
+    const { contact_id, content, sender_name, reply_type } = await req.json();
+    if (!contact_id || !content) {
+      return new Response(JSON.stringify({ error: 'contact_id e content são obrigatórios' }), { status: 400, headers });
+    }
+
+    const adminClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { auth: { persistSession: false } },
+    );
+
+    const { data: contact, error: contactError } = await adminClient
+      .from('contacts')
+      .select('id, name, phone, id_canal_externo, channel_tag, channel')
+      .eq('id', contact_id)
+      .single();
+
+    if (contactError || !contact) {
+      return new Response(JSON.stringify({ error: 'Contato não encontrado' }), { status: 404, headers });
+    }
+
+    const pageAccessToken = Deno.env.get('META_PAGE_ACCESS_TOKEN');
+    if (!pageAccessToken) {
+      return new Response(JSON.stringify({ error: 'META_PAGE_ACCESS_TOKEN não configurado' }), { status: 500, headers });
+    }
+
+    const recipientId = contact.id_canal_externo;
+    if (!recipientId) {
+      return new Response(JSON.stringify({ error: 'Contato sem ID externo Meta' }), { status: 400, headers });
+    }
+
+    let externalMessageId: string | null = null;
+    const channel = contact.channel || contact.channel_tag || 'facebook';
+    const effectiveReplyType = reply_type || 'message'; // 'message' or 'comment'
+
+    if (effectiveReplyType === 'comment') {
+      // Reply to a comment — find the parent comment/post id
+      const { data: lastMsg } = await adminClient
+        .from('messages')
+        .select('id_mensagem_externa, parent_id_mensagem_externa')
+        .eq('contact_id', contact_id)
+        .eq('sender_type', 'client')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      const commentId = lastMsg?.id_mensagem_externa;
+      if (!commentId) {
+        return new Response(JSON.stringify({ error: 'Comentário original não encontrado para responder' }), { status: 400, headers });
+      }
+
+      // Reply to the comment
+      const commentRes = await fetch(`${GRAPH_API}/${commentId}/replies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: content,
+          access_token: pageAccessToken,
+        }),
+      });
+
+      if (!commentRes.ok) {
+        const errBody = await commentRes.text();
+        console.error('Meta comment reply error:', commentRes.status, errBody);
+        return new Response(JSON.stringify({ error: 'Erro ao responder comentário via Meta' }), { status: 502, headers });
+      }
+
+      const commentResult = await commentRes.json();
+      externalMessageId = commentResult.id || null;
+
+    } else {
+      // Send DM via Messenger / IG Direct
+      const endpoint = `${GRAPH_API}/me/messages`;
+
+      const msgRes = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipient: { id: recipientId },
+          message: { text: content },
+          access_token: pageAccessToken,
+        }),
+      });
+
+      if (!msgRes.ok) {
+        const errBody = await msgRes.text();
+        console.error('Meta message error:', msgRes.status, errBody);
+        return new Response(JSON.stringify({ error: 'Erro ao enviar mensagem via Meta' }), { status: 502, headers });
+      }
+
+      const msgResult = await msgRes.json();
+      externalMessageId = msgResult.message_id || null;
+    }
+
+    // Save outgoing message in DB
+    const { error: insertError } = await adminClient.from('messages').insert({
+      contact_id,
+      content,
+      sender_type: 'human',
+      sender_name: sender_name || 'Atendente',
+      sender_user_id: user.id,
+      type: 'text',
+      status: 'delivered',
+      canal: channel,
+      id_mensagem_externa: externalMessageId,
+    });
+
+    if (insertError) {
+      console.error('Erro ao salvar mensagem Meta:', insertError);
+    }
+
+    await adminClient.from('contacts').update({ last_message_at: new Date().toISOString() }).eq('id', contact_id);
+
+    return new Response(JSON.stringify({ success: true, external_id: externalMessageId }), { status: 200, headers });
+  } catch (error) {
+    console.error('Erro no send-meta-message:', error);
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers });
+  }
+});
