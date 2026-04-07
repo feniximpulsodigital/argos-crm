@@ -12,33 +12,40 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    const token = authHeader?.replace(/^Bearer\s+/i, '').trim();
+
+    if (!token) {
+      console.error('send-meta-message auth failed: missing authorization header');
       return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const isServiceRole = token === serviceRoleKey;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
+    let isServiceRole = Boolean(serviceRoleKey && token === serviceRoleKey);
 
     let userId: string | null = null;
     let senderType = 'ia';
     let defaultSenderName = 'IA';
 
     if (!isServiceRole) {
-      // Authenticated user (human agent)
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_ANON_KEY')!,
-        { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+        { auth: { persistSession: false } },
       );
 
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
+      const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+      const claims = claimsData?.claims as { sub?: string; role?: string } | undefined;
+
+      if (claims?.role === 'service_role') {
+        isServiceRole = true;
+      } else if (claims?.sub) {
+        userId = claims.sub;
+        senderType = 'human';
+        defaultSenderName = 'Atendente';
+      } else {
+        console.error('send-meta-message auth failed: invalid token', claimsError?.message ?? 'missing claims');
         return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
       }
-      userId = user.id;
-      senderType = 'human';
-      defaultSenderName = 'Atendente';
     }
 
     const { contact_id, content, sender_name, reply_type } = await req.json();
