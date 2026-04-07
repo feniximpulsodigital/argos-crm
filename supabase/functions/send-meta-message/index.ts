@@ -92,10 +92,25 @@ Deno.serve(async (req) => {
     const channel = contact.channel || contact.channel_tag || 'facebook';
     const channelTag = contact.channel_tag || '';
 
-    // Auto-detect reply_type from channel if not explicitly provided
-    const isCommentChannel = channelTag.startsWith('comentario_') || 
-      channel.toLowerCase().includes('comentário');
-    const effectiveReplyType = reply_type || (isCommentChannel ? 'comment' : 'message');
+    // Auto-detect reply_type: check the last client message's canal to determine
+    // if the most recent interaction was a comment (even if the contact itself is "messenger")
+    let effectiveReplyType = reply_type || null;
+    if (!effectiveReplyType) {
+      const { data: lastClientMsg } = await adminClient
+        .from('messages')
+        .select('canal')
+        .eq('contact_id', contact_id)
+        .eq('sender_type', 'client')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const lastCanal = (lastClientMsg?.canal || '').toLowerCase();
+      const isCommentByLastMsg = lastCanal.includes('comentário') || lastCanal.includes('comentario');
+      const isCommentByTag = channelTag.startsWith('comentario_') || channel.toLowerCase().includes('comentário');
+      effectiveReplyType = (isCommentByLastMsg || isCommentByTag) ? 'comment' : 'message';
+      console.log(`Auto-detected reply_type: ${effectiveReplyType} (lastCanal: ${lastCanal}, channelTag: ${channelTag})`);
+    }
 
     if (effectiveReplyType === 'comment') {
       const { data: lastMsg } = await adminClient
