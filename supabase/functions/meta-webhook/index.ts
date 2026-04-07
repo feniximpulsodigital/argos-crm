@@ -76,6 +76,30 @@ function detectChannel(messagingOrChange: Record<string, unknown>, entryId: stri
   return { channel: 'Facebook', channelTag: 'facebook' };
 }
 
+// ─── Fetch user name from Meta Graph API ───
+async function fetchMetaUserName(userId: string, isInstagram: boolean): Promise<string | null> {
+  const token = Deno.env.get('META_PAGE_ACCESS_TOKEN');
+  if (!token) return null;
+  try {
+    const fields = isInstagram ? 'name,username' : 'first_name,last_name,name';
+    const res = await fetch(`https://graph.facebook.com/v21.0/${userId}?fields=${fields}&access_token=${token}`);
+    if (!res.ok) {
+      console.error(`Erro ao buscar nome Meta (${res.status}):`, await res.text());
+      return null;
+    }
+    const data = await res.json();
+    if (isInstagram) {
+      return data.name || data.username || null;
+    }
+    if (data.name) return data.name;
+    if (data.first_name) return `${data.first_name}${data.last_name ? ' ' + data.last_name : ''}`;
+    return null;
+  } catch (e) {
+    console.error('Erro ao buscar perfil Meta:', e);
+    return null;
+  }
+}
+
 // ─── Process a messaging event (Messenger / IG Direct) ───
 async function processMessaging(entry: any, messaging: any, supabase: ReturnType<typeof createClient>, objectType: string) {
   const senderId = messaging.sender?.id;
@@ -99,16 +123,20 @@ async function processMessaging(entry: any, messaging: any, supabase: ReturnType
   const channel = isInstagram ? 'Instagram Direct' : 'Messenger';
   const channelTag = isInstagram ? 'instagram_direct' : 'messenger';
 
+  // Fetch real name from Meta API
+  const realName = await fetchMetaUserName(senderId, isInstagram);
+  const displayName = realName || senderId;
+
   await upsertContactAndSaveMessage(supabase, {
     externalId: senderId,
-    name: senderId, // Will be updated later if we fetch profile
+    name: displayName,
     content,
     messageId,
     messageType,
     channel,
     channelTag,
     senderType: 'client',
-    senderName: senderId,
+    senderName: displayName,
   });
 }
 
