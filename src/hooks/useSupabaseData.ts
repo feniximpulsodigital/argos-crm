@@ -52,7 +52,7 @@ export function useSendMessage() {
     mutationFn: async (msg: { contact_id: string; content: string; sender_type: string; sender_name?: string; sender_user_id?: string; channel?: string; reply_type?: string }) => {
       const { data: { session } } = await supabase.auth.getSession();
       // Route to the correct edge function based on channel
-      const metaChannels = ['messenger', 'instagram', 'facebook'];
+      const metaChannels = ['messenger', 'instagram', 'facebook', 'instagram_direct', 'comentario_instagram', 'comentario_facebook'];
       const isMeta = msg.channel && metaChannels.includes(msg.channel.toLowerCase());
       const functionName = isMeta ? 'send-meta-message' : 'send-message';
 
