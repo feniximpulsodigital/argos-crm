@@ -44,6 +44,7 @@ export default function MyConversations() {
       sender_type: 'human',
       sender_name: user?.name,
       sender_user_id: user?.id,
+      channel: selectedContact.channel_tag,
     }, {
       onSuccess: () => { toast.success('Mensagem enviada!'); setMessage(''); },
       onError: () => toast.error('Erro ao enviar'),
