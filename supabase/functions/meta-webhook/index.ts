@@ -96,8 +96,8 @@ async function processMessaging(entry: any, messaging: any, supabase: ReturnType
 
   // Use the top-level "object" field from Meta payload to determine channel
   const isInstagram = objectType === 'instagram';
-  const channel = isInstagram ? 'Instagram' : 'Messenger';
-  const channelTag = isInstagram ? 'instagram' : 'messenger';
+  const channel = isInstagram ? 'Instagram Direct' : 'Messenger';
+  const channelTag = isInstagram ? 'instagram_direct' : 'messenger';
 
   await upsertContactAndSaveMessage(supabase, {
     externalId: senderId,
@@ -128,9 +128,9 @@ async function processComment(entry: any, change: any, supabase: ReturnType<type
 
   if (!senderId || !commentId) return;
 
-  // Determine channel
-  const channel = change.field === 'comments' ? 'Instagram' : 'Facebook';
-  const channelTag = change.field === 'comments' ? 'instagram' : 'facebook';
+  // Determine channel - differentiate Facebook vs Instagram comments
+  const channel = change.field === 'comments' ? 'Comentário Instagram' : 'Comentário Facebook';
+  const channelTag = change.field === 'comments' ? 'comentario_instagram' : 'comentario_facebook';
 
   await upsertContactAndSaveMessage(supabase, {
     externalId: senderId,
