@@ -90,7 +90,12 @@ Deno.serve(async (req) => {
 
     let externalMessageId: string | null = null;
     const channel = contact.channel || contact.channel_tag || 'facebook';
-    const effectiveReplyType = reply_type || 'message';
+    const channelTag = contact.channel_tag || '';
+
+    // Auto-detect reply_type from channel if not explicitly provided
+    const isCommentChannel = channelTag.startsWith('comentario_') || 
+      channel.toLowerCase().includes('comentário');
+    const effectiveReplyType = reply_type || (isCommentChannel ? 'comment' : 'message');
 
     if (effectiveReplyType === 'comment') {
       const { data: lastMsg } = await adminClient
