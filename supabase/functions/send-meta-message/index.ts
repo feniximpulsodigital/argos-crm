@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Comentário original não encontrado para responder' }), { status: 400, headers });
       }
 
-      const commentRes = await fetch(`${GRAPH_API}/${commentId}/replies`, {
+      const commentRes = await fetch(`${GRAPH_API}/${commentId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: content, access_token: pageAccessToken }),
