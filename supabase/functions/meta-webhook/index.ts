@@ -186,6 +186,14 @@ async function upsertContactAndSaveMessage(
 
   if (found) {
     contact = found as ContactRow;
+    // Update channel info if it changed (e.g., same user now commenting instead of messaging)
+    if (found.channel_tag !== data.channelTag) {
+      await supabase
+        .from('contacts')
+        .update({ channel: data.channel, channel_tag: data.channelTag })
+        .eq('id', found.id);
+      console.log(`Contato ${found.id} canal atualizado: ${found.channel_tag} → ${data.channelTag}`);
+    }
   } else {
     const { data: newContact, error: createError } = await supabase
       .from('contacts')
@@ -197,7 +205,7 @@ async function upsertContactAndSaveMessage(
         pipeline_stage: 'Novo Lead',
         ai_enabled: true,
         last_message_at: new Date().toISOString(),
-        tags: [data.channel],
+        tags: [data.channelTag],
       })
       .select('id, name, phone, ai_enabled, pipeline_stage, channel_tag, tags, id_canal_externo')
       .single();
