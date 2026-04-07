@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     if (effectiveReplyType === 'comment') {
       const { data: lastMsg } = await adminClient
         .from('messages')
-        .select('id_mensagem_externa, parent_id_mensagem_externa')
+        .select('id_mensagem_externa, parent_id_mensagem_externa, canal')
         .eq('contact_id', contact_id)
         .eq('sender_type', 'client')
         .order('created_at', { ascending: false })
@@ -127,7 +127,13 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Comentário original não encontrado para responder' }), { status: 400, headers });
       }
 
-      const commentRes = await fetch(`${GRAPH_API}/${commentId}/comments`, {
+      // Instagram uses /replies, Facebook uses /comments
+      const lastCanal = (lastMsg?.canal || '').toLowerCase();
+      const isInstagramComment = lastCanal.includes('instagram') || channelTag.includes('instagram');
+      const replyEndpoint = isInstagramComment ? 'replies' : 'comments';
+      console.log(`Comment reply: using /${replyEndpoint} (canal: ${lastCanal}, channelTag: ${channelTag})`);
+
+      const commentRes = await fetch(`${GRAPH_API}/${commentId}/${replyEndpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: content, access_token: pageAccessToken }),
