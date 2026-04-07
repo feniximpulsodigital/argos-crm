@@ -77,7 +77,7 @@ function detectChannel(messagingOrChange: Record<string, unknown>, entryId: stri
 }
 
 // ─── Process a messaging event (Messenger / IG Direct) ───
-async function processMessaging(entry: any, messaging: any, supabase: ReturnType<typeof createClient>) {
+async function processMessaging(entry: any, messaging: any, supabase: ReturnType<typeof createClient>, objectType: string) {
   const senderId = messaging.sender?.id;
   const messageObj = messaging.message;
   const postback = messaging.postback;
@@ -94,8 +94,8 @@ async function processMessaging(entry: any, messaging: any, supabase: ReturnType
   const messageId = messageObj?.mid || `postback_${Date.now()}`;
   const messageType = messageObj?.attachments?.[0]?.type || 'text';
 
-  // Determine if Instagram or Messenger
-  const isInstagram = entry.id !== entry.messaging?.[0]?.recipient?.id && entry.id?.length > 15;
+  // Use the top-level "object" field from Meta payload to determine channel
+  const isInstagram = objectType === 'instagram';
   const channel = isInstagram ? 'Instagram' : 'Messenger';
   const channelTag = isInstagram ? 'instagram' : 'messenger';
 
@@ -283,13 +283,14 @@ Deno.serve(async (req) => {
     const supabase = getSupabase();
 
     // Meta sends { object: "page" | "instagram", entry: [...] }
+    const objectType = body.object || 'page';
     const entries = body.entry || [];
 
     for (const entry of entries) {
       // Messaging events (Messenger / IG Direct)
       const messagingEvents = entry.messaging || [];
       for (const messaging of messagingEvents) {
-        await processMessaging(entry, messaging, supabase);
+        await processMessaging(entry, messaging, supabase, objectType);
       }
 
       // Changes events (comments, feed)
