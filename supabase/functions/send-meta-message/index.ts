@@ -19,8 +19,21 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
     }
 
+    // Check if token is service_role by comparing OR by decoding JWT payload
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
     let isServiceRole = Boolean(serviceRoleKey && token === serviceRoleKey);
+
+    if (!isServiceRole) {
+      try {
+        const payloadB64 = token.split('.')[1];
+        if (payloadB64) {
+          const payload = JSON.parse(atob(payloadB64));
+          if (payload.role === 'service_role') {
+            isServiceRole = true;
+          }
+        }
+      } catch (_) { /* not a valid JWT, will fall through to user auth */ }
+    }
 
     let userId: string | null = null;
     let senderType = 'ia';
