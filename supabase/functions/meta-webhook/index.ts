@@ -214,13 +214,19 @@ async function upsertContactAndSaveMessage(
 
   if (found) {
     contact = found as ContactRow;
-    // Update channel info if it changed (e.g., same user now commenting instead of messaging)
+    const updates: Record<string, string> = {};
+    // Update channel info if it changed
     if (found.channel_tag !== data.channelTag) {
-      await supabase
-        .from('contacts')
-        .update({ channel: data.channel, channel_tag: data.channelTag })
-        .eq('id', found.id);
-      console.log(`Contato ${found.id} canal atualizado: ${found.channel_tag} → ${data.channelTag}`);
+      updates.channel = data.channel;
+      updates.channel_tag = data.channelTag;
+    }
+    // Update name if currently stored as numeric ID and we now have a real name
+    if (/^\d+$/.test(found.name) && data.name && !/^\d+$/.test(data.name)) {
+      updates.name = data.name;
+      console.log(`Contato ${found.id} nome atualizado: ${found.name} → ${data.name}`);
+    }
+    if (Object.keys(updates).length > 0) {
+      await supabase.from('contacts').update(updates).eq('id', found.id);
     }
   } else {
     const { data: newContact, error: createError } = await supabase
