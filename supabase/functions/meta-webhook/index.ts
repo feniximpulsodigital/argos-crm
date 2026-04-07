@@ -96,8 +96,8 @@ async function processMessaging(entry: any, messaging: any, supabase: ReturnType
 
   // Use the top-level "object" field from Meta payload to determine channel
   const isInstagram = objectType === 'instagram';
-  const channel = isInstagram ? 'Instagram' : 'Messenger';
-  const channelTag = isInstagram ? 'instagram' : 'messenger';
+  const channel = isInstagram ? 'Instagram Direct' : 'Messenger';
+  const channelTag = isInstagram ? 'instagram_direct' : 'messenger';
 
   await upsertContactAndSaveMessage(supabase, {
     externalId: senderId,
