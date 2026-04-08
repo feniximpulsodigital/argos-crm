@@ -225,6 +225,7 @@ export default function Funnel() {
                   isOver={overColumnId === col.id}
                   onEdit={() => { setEditingStage({ id: col.id, name: col.name, color: col.color }); setStageDialog(true); }}
                   onDelete={() => deleteStage.mutate(col.id, { onSuccess: () => toast.success('Fase removida') })}
+                  onCardClick={(id) => navigate(`/conversas?contactId=${id}`)}
                 />
               ))}
             </SortableContext>
