@@ -90,7 +90,7 @@ function SortableColumn({ stage, cards, isOver, onEdit, onDelete, onCardClick }:
       </div>
       <div ref={dropRef} className={`space-y-2 min-h-[100px] rounded-lg transition-colors ${isOver ? 'bg-accent/10 ring-2 ring-accent/30' : ''}`}>
         <SortableContext items={cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
-          {cards.map(card => <SortableCard key={card.id} card={card} />)}
+          {cards.map(card => <SortableCard key={card.id} card={card} onClick={() => onCardClick(card.id)} />)}
         </SortableContext>
       </div>
     </div>
