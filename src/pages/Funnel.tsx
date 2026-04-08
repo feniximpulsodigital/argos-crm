@@ -98,6 +98,7 @@ function SortableColumn({ stage, cards, isOver, onEdit, onDelete, onCardClick }:
 }
 
 export default function Funnel() {
+  const navigate = useNavigate();
   const { data: stages, isLoading: stagesLoading } = usePipelineStages();
   const { data: contacts, isLoading: contactsLoading } = useContacts();
   const updateContact = useUpdateContact();
