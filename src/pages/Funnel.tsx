@@ -66,10 +66,6 @@ function SortableColumn({ stage, cards, isOver, onEdit, onDelete, onCardClick }:
   onEdit: () => void;
   onDelete: () => void;
   onCardClick: (id: string) => void;
-  cards: Tables<'contacts'>[];
-  isOver: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef: sortRef, transform, transition, isDragging } = useSortable({
     id: `stage-${stage.id}`,
