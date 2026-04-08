@@ -49,18 +49,23 @@ function FunnelCardContent({ card }: { card: Tables<'contacts'> }) {
   );
 }
 
-function SortableCard({ card }: { card: Tables<'contacts'> }) {
+function SortableCard({ card, onClick }: { card: Tables<'contacts'>; onClick: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: card.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="kanban-card">
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} onClick={onClick} className="kanban-card cursor-pointer">
       <FunnelCardContent card={card} />
     </div>
   );
 }
 
-function SortableColumn({ stage, cards, isOver, onEdit, onDelete }: {
+function SortableColumn({ stage, cards, isOver, onEdit, onDelete, onCardClick }: {
   stage: Tables<'pipeline_stages'>;
+  cards: Tables<'contacts'>[];
+  isOver: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onCardClick: (id: string) => void;
   cards: Tables<'contacts'>[];
   isOver: boolean;
   onEdit: () => void;
