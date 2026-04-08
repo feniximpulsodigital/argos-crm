@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -90,7 +91,8 @@ export default function Conversations() {
   const { data: profiles } = useProfiles();
   const { data: roles } = useUserRoles();
   const { data: settings } = useAppSettings();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('contactId'));
   const [searchQuery, setSearchQuery] = useState('');
   const [message, setMessage] = useState('');
   const [assignPopoverOpen, setAssignPopoverOpen] = useState(false);
