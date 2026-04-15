@@ -9,21 +9,29 @@ Deno.serve(async (req) => {
   const headers = { ...corsHeaders, 'Content-Type': 'application/json' };
 
   try {
-    // Validate auth
+    // Validate auth — accept both user JWT and service_role key
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
-    );
+    const token = authHeader.replace('Bearer ', '');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const isServiceRole = token === serviceRoleKey;
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
+    let userId: string | null = null;
+
+    if (!isServiceRole) {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+      );
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
+      }
+      userId = user.id;
     }
 
     const { contact_id, content, sender_name } = await req.json();
@@ -103,9 +111,9 @@ Deno.serve(async (req) => {
     const { error: insertError } = await adminClient.from('messages').insert({
       contact_id,
       content,
-      sender_type: 'human',
-      sender_name: sender_name || 'Atendente',
-      sender_user_id: user.id,
+      sender_type: isServiceRole ? 'ia' : 'human',
+      sender_name: sender_name || (isServiceRole ? 'IA' : 'Atendente'),
+      sender_user_id: userId,
       type: 'text',
       status: 'delivered',
       canal: 'WhatsApp',
