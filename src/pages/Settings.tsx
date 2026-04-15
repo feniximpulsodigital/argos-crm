@@ -505,6 +505,74 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                Exclusão de Leads
+              </CardTitle>
+              <CardDescription>Exclua leads por tag ou por tempo de criação</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="flex gap-2">
+                <Button variant={deleteMode === 'tag' ? 'default' : 'outline'} size="sm" onClick={() => setDeleteMode('tag')}>
+                  Por Tag
+                </Button>
+                <Button variant={deleteMode === 'time' ? 'default' : 'outline'} size="sm" onClick={() => setDeleteMode('time')}>
+                  Por Tempo
+                </Button>
+              </div>
+
+              {deleteMode === 'tag' ? (
+                <div className="space-y-3">
+                  <Label>Selecione as tags dos leads a excluir</Label>
+                  <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+                    {tags?.map(tag => (
+                      <label key={tag.id} className="flex items-center gap-1.5 border rounded-full px-3 py-1 cursor-pointer hover:bg-muted/50 transition-colors">
+                        <Checkbox
+                          checked={selectedTagsForDelete.includes(tag.name)}
+                          onCheckedChange={checked => {
+                            setSelectedTagsForDelete(prev =>
+                              checked ? [...prev, tag.name] : prev.filter(t => t !== tag.name)
+                            );
+                          }}
+                        />
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                        <span className="text-sm">{tag.name}</span>
+                      </label>
+                    ))}
+                    {(!tags || tags.length === 0) && <p className="text-sm text-muted-foreground">Nenhuma tag disponível</p>}
+                  </div>
+                  {selectedTagsForDelete.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {selectedTagsForDelete.length} tag(s) selecionada(s) — leads que possuem <strong>qualquer</strong> uma dessas tags serão excluídos
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Excluir leads criados há mais de</Label>
+                  <Select value={deleteOlderThanDays} onValueChange={setDeleteOlderThanDays}>
+                    <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 dias</SelectItem>
+                      <SelectItem value="60">60 dias</SelectItem>
+                      <SelectItem value="90">90 dias</SelectItem>
+                      <SelectItem value="120">120 dias</SelectItem>
+                      <SelectItem value="180">180 dias</SelectItem>
+                      <SelectItem value="365">365 dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <Button variant="destructive" size="sm" onClick={handleDeleteLeads} disabled={deletingLeads}>
+                {deletingLeads ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Trash className="mr-1 h-3.5 w-3.5" />}
+                Excluir leads
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
