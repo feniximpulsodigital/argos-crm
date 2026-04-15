@@ -50,8 +50,11 @@ export default function Settings() {
   const updateProfile = useUpdateProfile();
 
   const aiConfig = settings?.find(s => s.key === 'ai_config')?.value as any;
+  const cleanupConfig = settings?.find(s => s.key === 'message_cleanup')?.value as { retention_days?: number } | undefined;
   const [aiName, setAiName] = useState('');
   const [aiDelay, setAiDelay] = useState(3);
+  const [retentionDays, setRetentionDays] = useState(90);
+  const [runningCleanup, setRunningCleanup] = useState(false);
 
   useEffect(() => {
     if (aiConfig) {
@@ -59,6 +62,12 @@ export default function Settings() {
       setAiDelay(aiConfig.delay_seconds ?? 3);
     }
   }, [aiConfig]);
+
+  useEffect(() => {
+    if (cleanupConfig) {
+      setRetentionDays(cleanupConfig.retention_days ?? 90);
+    }
+  }, [cleanupConfig]);
 
   const regularTags = tags?.filter(t => !t.is_channel_tag) || [];
   const channelTags = tags?.filter(t => t.is_channel_tag) || [];
