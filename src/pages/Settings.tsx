@@ -15,6 +15,7 @@ import {
   Brain, Palette, Users, Plus, Trash, Edit, Loader2, Save, Database,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import {
   useTags, useCreateTag, useUpdateTag, useDeleteTag,
   usePipelineStages, useCreatePipelineStage, useUpdatePipelineStage, useDeletePipelineStage,
