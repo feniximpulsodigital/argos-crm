@@ -103,7 +103,7 @@ export default function Reports() {
               <Button key={p} variant={period === p ? 'default' : 'ghost'} size="sm" onClick={() => setPeriod(p)} className="text-xs">{p}</Button>
             ))}
           </div>
-          <Button variant="outline" size="sm" onClick={() => toast.info('Exportar CSV')}><Download className="mr-1 h-3 w-3" /> Exportar</Button>
+          <Button variant="outline" size="sm" onClick={() => contacts && exportLeadsCSV(contacts)}><Download className="mr-1 h-3 w-3" /> Exportar Leads</Button>
         </div>
       </div>
 
