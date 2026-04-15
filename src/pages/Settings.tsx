@@ -38,10 +38,12 @@ export default function Settings() {
   }, [user, navigate]);
 
   const { data: tags, isLoading: tagsLoading } = useTags();
+  const { data: allContacts } = useContacts();
   const { data: stages } = usePipelineStages();
   const { data: profiles } = useProfiles();
   const { data: roles } = useUserRoles();
   const { data: settings } = useAppSettings();
+  const queryClient = useQueryClient();
   const updateSetting = useUpdateAppSetting();
   const createTag = useCreateTag();
   const updateTag = useUpdateTag();
@@ -59,6 +61,12 @@ export default function Settings() {
   const [aiDelay, setAiDelay] = useState(3);
   const [retentionDays, setRetentionDays] = useState(90);
   const [runningCleanup, setRunningCleanup] = useState(false);
+
+  // Lead deletion state
+  const [deleteMode, setDeleteMode] = useState<'tag' | 'time'>('tag');
+  const [selectedTagsForDelete, setSelectedTagsForDelete] = useState<string[]>([]);
+  const [deleteOlderThanDays, setDeleteOlderThanDays] = useState('90');
+  const [deletingLeads, setDeletingLeads] = useState(false);
 
   useEffect(() => {
     if (aiConfig) {
