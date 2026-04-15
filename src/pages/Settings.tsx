@@ -205,6 +205,57 @@ export default function Settings() {
     }
   };
 
+  const handleDeleteLeads = async () => {
+    if (deleteMode === 'tag' && selectedTagsForDelete.length === 0) {
+      toast.error('Selecione pelo menos uma tag');
+      return;
+    }
+    const confirmMsg = deleteMode === 'tag'
+      ? `Excluir todos os leads com as tags selecionadas?`
+      : `Excluir todos os leads criados há mais de ${deleteOlderThanDays} dias?`;
+    if (!confirm(confirmMsg)) return;
+
+    setDeletingLeads(true);
+    try {
+      let query = supabase.from('contacts').select('id, tags, created_at');
+      const { data: allLeads, error: fetchErr } = await query;
+      if (fetchErr) throw fetchErr;
+
+      let idsToDelete: string[] = [];
+      if (deleteMode === 'tag') {
+        idsToDelete = (allLeads || [])
+          .filter(c => c.tags && selectedTagsForDelete.some(t => c.tags.includes(t)))
+          .map(c => c.id);
+      } else {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - Number(deleteOlderThanDays));
+        idsToDelete = (allLeads || [])
+          .filter(c => new Date(c.created_at) < cutoff)
+          .map(c => c.id);
+      }
+
+      if (idsToDelete.length === 0) {
+        toast.info('Nenhum lead encontrado com os critérios selecionados');
+        return;
+      }
+
+      // Delete messages first, then contacts in batches
+      for (let i = 0; i < idsToDelete.length; i += 50) {
+        const batch = idsToDelete.slice(i, i + 50);
+        await supabase.from('messages').delete().in('contact_id', batch);
+        await supabase.from('contacts').delete().in('id', batch);
+      }
+
+      toast.success(`${idsToDelete.length} lead(s) excluído(s)`);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      setSelectedTagsForDelete([]);
+    } catch (err: any) {
+      toast.error(`Erro: ${err.message}`);
+    } finally {
+      setDeletingLeads(false);
+    }
+  };
+
   if (user?.role !== 'admin') return null;
 
   const defaultColors = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
