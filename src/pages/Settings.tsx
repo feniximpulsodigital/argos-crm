@@ -210,6 +210,7 @@ export default function Settings() {
           <TabsTrigger value="ia" className="gap-1.5"><Brain className="h-3.5 w-3.5" />IA</TabsTrigger>
           <TabsTrigger value="tags" className="gap-1.5"><Palette className="h-3.5 w-3.5" />Tags e Funil</TabsTrigger>
           <TabsTrigger value="equipe" className="gap-1.5"><Users className="h-3.5 w-3.5" />Equipe</TabsTrigger>
+          <TabsTrigger value="manutencao" className="gap-1.5"><Database className="h-3.5 w-3.5" />Manutenção</TabsTrigger>
         </TabsList>
 
         {/* IA Tab */}
