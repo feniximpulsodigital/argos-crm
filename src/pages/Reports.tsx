@@ -21,6 +21,27 @@ const CHANNEL_MAP: Record<string, string> = {
   site: 'Site',
 };
 
+function exportLeadsCSV(contacts: any[]) {
+  const header = ['Nome', 'Telefone', 'Email', 'Canal', 'Fase do Funil', 'Criado em'];
+  const rows = contacts.map(c => [
+    c.name || '',
+    c.phone || '',
+    c.email || '',
+    CHANNEL_MAP[c.channel_tag] || c.channel_tag || '',
+    c.pipeline_stage || '',
+    c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '',
+  ]);
+  const csvContent = [header, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `leads_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast.success('Leads exportados com sucesso!');
+}
+
 export default function Reports() {
   const [period, setPeriod] = useState<typeof periods[number]>('30 dias');
   const { data: contacts, isLoading } = useContacts();
