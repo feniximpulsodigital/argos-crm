@@ -403,6 +403,47 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Manutenção Tab */}
+        <TabsContent value="manutencao" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Limpeza de Mensagens</CardTitle>
+              <CardDescription>Configure a exclusão automática de mensagens antigas para economizar espaço</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label>Período de retenção</Label>
+                <p className="text-xs text-muted-foreground">Mensagens mais antigas que este período serão excluídas automaticamente (execução diária às 3h UTC)</p>
+                <div className="flex items-center gap-3">
+                  <Select value={String(retentionDays)} onValueChange={v => setRetentionDays(Number(v))}>
+                    <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 dias</SelectItem>
+                      <SelectItem value="60">60 dias</SelectItem>
+                      <SelectItem value="90">90 dias</SelectItem>
+                      <SelectItem value="120">120 dias</SelectItem>
+                      <SelectItem value="180">180 dias</SelectItem>
+                      <SelectItem value="365">365 dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={handleSaveRetention} disabled={updateSetting.isPending} size="sm">
+                    <Save className="mr-1 h-3.5 w-3.5" />Salvar
+                  </Button>
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label>Executar limpeza agora</Label>
+                <p className="text-xs text-muted-foreground">Remove imediatamente todas as mensagens mais antigas que o período configurado</p>
+                <Button variant="destructive" size="sm" onClick={handleRunCleanup} disabled={runningCleanup}>
+                  {runningCleanup ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Trash className="mr-1 h-3.5 w-3.5" />}
+                  Executar limpeza
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Tag Dialog */}
