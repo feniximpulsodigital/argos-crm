@@ -111,9 +111,9 @@ Deno.serve(async (req) => {
     const { error: insertError } = await adminClient.from('messages').insert({
       contact_id,
       content,
-      sender_type: 'human',
-      sender_name: sender_name || 'Atendente',
-      sender_user_id: user.id,
+      sender_type: isServiceRole ? 'ia' : 'human',
+      sender_name: sender_name || (isServiceRole ? 'IA' : 'Atendente'),
+      sender_user_id: userId,
       type: 'text',
       status: 'delivered',
       canal: 'WhatsApp',
