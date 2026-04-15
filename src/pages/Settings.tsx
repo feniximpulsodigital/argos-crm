@@ -22,7 +22,9 @@ import {
   usePipelineStages, useCreatePipelineStage, useUpdatePipelineStage, useDeletePipelineStage,
   useProfiles, useUserRoles, useInviteUser, useDeleteUser, useUpdateProfile,
   useAppSettings, useUpdateAppSetting,
+  useContacts, useTags as useTagsHook,
 } from '@/hooks/useSupabaseData';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function Settings() {
   const { user } = useAuth();
