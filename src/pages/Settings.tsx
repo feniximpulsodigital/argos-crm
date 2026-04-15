@@ -12,9 +12,10 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Brain, Palette, Users, Plus, Trash, Edit, Loader2, Save,
+  Brain, Palette, Users, Plus, Trash, Edit, Loader2, Save, Database,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import {
   useTags, useCreateTag, useUpdateTag, useDeleteTag,
   usePipelineStages, useCreatePipelineStage, useUpdatePipelineStage, useDeletePipelineStage,
@@ -50,8 +51,11 @@ export default function Settings() {
   const updateProfile = useUpdateProfile();
 
   const aiConfig = settings?.find(s => s.key === 'ai_config')?.value as any;
+  const cleanupConfig = settings?.find(s => s.key === 'message_cleanup')?.value as { retention_days?: number } | undefined;
   const [aiName, setAiName] = useState('');
   const [aiDelay, setAiDelay] = useState(3);
+  const [retentionDays, setRetentionDays] = useState(90);
+  const [runningCleanup, setRunningCleanup] = useState(false);
 
   useEffect(() => {
     if (aiConfig) {
@@ -59,6 +63,12 @@ export default function Settings() {
       setAiDelay(aiConfig.delay_seconds ?? 3);
     }
   }, [aiConfig]);
+
+  useEffect(() => {
+    if (cleanupConfig) {
+      setRetentionDays(cleanupConfig.retention_days ?? 90);
+    }
+  }, [cleanupConfig]);
 
   const regularTags = tags?.filter(t => !t.is_channel_tag) || [];
   const channelTags = tags?.filter(t => t.is_channel_tag) || [];
@@ -164,6 +174,26 @@ export default function Settings() {
     });
   };
 
+  const handleSaveRetention = () => {
+    updateSetting.mutate(
+      { key: 'message_cleanup', value: { retention_days: retentionDays } },
+      { onSuccess: () => toast.success('Período de retenção salvo'), onError: () => toast.error('Erro ao salvar') },
+    );
+  };
+
+  const handleRunCleanup = async () => {
+    setRunningCleanup(true);
+    try {
+      const { error } = await supabase.rpc('delete_old_messages');
+      if (error) throw error;
+      toast.success('Limpeza executada com sucesso!');
+    } catch (err: any) {
+      toast.error(`Erro ao executar limpeza: ${err.message}`);
+    } finally {
+      setRunningCleanup(false);
+    }
+  };
+
   if (user?.role !== 'admin') return null;
 
   const defaultColors = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
@@ -180,6 +210,7 @@ export default function Settings() {
           <TabsTrigger value="ia" className="gap-1.5"><Brain className="h-3.5 w-3.5" />IA</TabsTrigger>
           <TabsTrigger value="tags" className="gap-1.5"><Palette className="h-3.5 w-3.5" />Tags e Funil</TabsTrigger>
           <TabsTrigger value="equipe" className="gap-1.5"><Users className="h-3.5 w-3.5" />Equipe</TabsTrigger>
+          <TabsTrigger value="manutencao" className="gap-1.5"><Database className="h-3.5 w-3.5" />Manutenção</TabsTrigger>
         </TabsList>
 
         {/* IA Tab */}
@@ -368,6 +399,47 @@ export default function Settings() {
                   </div>
                 ))}
                 {teamMembers.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum membro</p>}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Manutenção Tab */}
+        <TabsContent value="manutencao" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Limpeza de Mensagens</CardTitle>
+              <CardDescription>Configure a exclusão automática de mensagens antigas para economizar espaço</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label>Período de retenção</Label>
+                <p className="text-xs text-muted-foreground">Mensagens mais antigas que este período serão excluídas automaticamente (execução diária às 3h UTC)</p>
+                <div className="flex items-center gap-3">
+                  <Select value={String(retentionDays)} onValueChange={v => setRetentionDays(Number(v))}>
+                    <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 dias</SelectItem>
+                      <SelectItem value="60">60 dias</SelectItem>
+                      <SelectItem value="90">90 dias</SelectItem>
+                      <SelectItem value="120">120 dias</SelectItem>
+                      <SelectItem value="180">180 dias</SelectItem>
+                      <SelectItem value="365">365 dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={handleSaveRetention} disabled={updateSetting.isPending} size="sm">
+                    <Save className="mr-1 h-3.5 w-3.5" />Salvar
+                  </Button>
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label>Executar limpeza agora</Label>
+                <p className="text-xs text-muted-foreground">Remove imediatamente todas as mensagens mais antigas que o período configurado</p>
+                <Button variant="destructive" size="sm" onClick={handleRunCleanup} disabled={runningCleanup}>
+                  {runningCleanup ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Trash className="mr-1 h-3.5 w-3.5" />}
+                  Executar limpeza
+                </Button>
               </div>
             </CardContent>
           </Card>
