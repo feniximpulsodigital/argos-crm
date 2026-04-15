@@ -11,8 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Brain, Palette, Users, Plus, Trash, Edit, Loader2, Save, Database,
+  Brain, Palette, Users, Plus, Trash, Edit, Loader2, Save, Database, AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,7 +22,9 @@ import {
   usePipelineStages, useCreatePipelineStage, useUpdatePipelineStage, useDeletePipelineStage,
   useProfiles, useUserRoles, useInviteUser, useDeleteUser, useUpdateProfile,
   useAppSettings, useUpdateAppSetting,
+  useContacts, useTags as useTagsHook,
 } from '@/hooks/useSupabaseData';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -35,10 +38,12 @@ export default function Settings() {
   }, [user, navigate]);
 
   const { data: tags, isLoading: tagsLoading } = useTags();
+  const { data: allContacts } = useContacts();
   const { data: stages } = usePipelineStages();
   const { data: profiles } = useProfiles();
   const { data: roles } = useUserRoles();
   const { data: settings } = useAppSettings();
+  const queryClient = useQueryClient();
   const updateSetting = useUpdateAppSetting();
   const createTag = useCreateTag();
   const updateTag = useUpdateTag();
@@ -56,6 +61,12 @@ export default function Settings() {
   const [aiDelay, setAiDelay] = useState(3);
   const [retentionDays, setRetentionDays] = useState(90);
   const [runningCleanup, setRunningCleanup] = useState(false);
+
+  // Lead deletion state
+  const [deleteMode, setDeleteMode] = useState<'tag' | 'time'>('tag');
+  const [selectedTagsForDelete, setSelectedTagsForDelete] = useState<string[]>([]);
+  const [deleteOlderThanDays, setDeleteOlderThanDays] = useState('90');
+  const [deletingLeads, setDeletingLeads] = useState(false);
 
   useEffect(() => {
     if (aiConfig) {
@@ -191,6 +202,57 @@ export default function Settings() {
       toast.error(`Erro ao executar limpeza: ${err.message}`);
     } finally {
       setRunningCleanup(false);
+    }
+  };
+
+  const handleDeleteLeads = async () => {
+    if (deleteMode === 'tag' && selectedTagsForDelete.length === 0) {
+      toast.error('Selecione pelo menos uma tag');
+      return;
+    }
+    const confirmMsg = deleteMode === 'tag'
+      ? `Excluir todos os leads com as tags selecionadas?`
+      : `Excluir todos os leads criados há mais de ${deleteOlderThanDays} dias?`;
+    if (!confirm(confirmMsg)) return;
+
+    setDeletingLeads(true);
+    try {
+      let query = supabase.from('contacts').select('id, tags, created_at');
+      const { data: allLeads, error: fetchErr } = await query;
+      if (fetchErr) throw fetchErr;
+
+      let idsToDelete: string[] = [];
+      if (deleteMode === 'tag') {
+        idsToDelete = (allLeads || [])
+          .filter(c => c.tags && selectedTagsForDelete.some(t => c.tags.includes(t)))
+          .map(c => c.id);
+      } else {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - Number(deleteOlderThanDays));
+        idsToDelete = (allLeads || [])
+          .filter(c => new Date(c.created_at) < cutoff)
+          .map(c => c.id);
+      }
+
+      if (idsToDelete.length === 0) {
+        toast.info('Nenhum lead encontrado com os critérios selecionados');
+        return;
+      }
+
+      // Delete messages first, then contacts in batches
+      for (let i = 0; i < idsToDelete.length; i += 50) {
+        const batch = idsToDelete.slice(i, i + 50);
+        await supabase.from('messages').delete().in('contact_id', batch);
+        await supabase.from('contacts').delete().in('id', batch);
+      }
+
+      toast.success(`${idsToDelete.length} lead(s) excluído(s)`);
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      setSelectedTagsForDelete([]);
+    } catch (err: any) {
+      toast.error(`Erro: ${err.message}`);
+    } finally {
+      setDeletingLeads(false);
     }
   };
 
@@ -441,6 +503,74 @@ export default function Settings() {
                   Executar limpeza
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                Exclusão de Leads
+              </CardTitle>
+              <CardDescription>Exclua leads por tag ou por tempo de criação</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="flex gap-2">
+                <Button variant={deleteMode === 'tag' ? 'default' : 'outline'} size="sm" onClick={() => setDeleteMode('tag')}>
+                  Por Tag
+                </Button>
+                <Button variant={deleteMode === 'time' ? 'default' : 'outline'} size="sm" onClick={() => setDeleteMode('time')}>
+                  Por Tempo
+                </Button>
+              </div>
+
+              {deleteMode === 'tag' ? (
+                <div className="space-y-3">
+                  <Label>Selecione as tags dos leads a excluir</Label>
+                  <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+                    {tags?.map(tag => (
+                      <label key={tag.id} className="flex items-center gap-1.5 border rounded-full px-3 py-1 cursor-pointer hover:bg-muted/50 transition-colors">
+                        <Checkbox
+                          checked={selectedTagsForDelete.includes(tag.name)}
+                          onCheckedChange={checked => {
+                            setSelectedTagsForDelete(prev =>
+                              checked ? [...prev, tag.name] : prev.filter(t => t !== tag.name)
+                            );
+                          }}
+                        />
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                        <span className="text-sm">{tag.name}</span>
+                      </label>
+                    ))}
+                    {(!tags || tags.length === 0) && <p className="text-sm text-muted-foreground">Nenhuma tag disponível</p>}
+                  </div>
+                  {selectedTagsForDelete.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {selectedTagsForDelete.length} tag(s) selecionada(s) — leads que possuem <strong>qualquer</strong> uma dessas tags serão excluídos
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Excluir leads criados há mais de</Label>
+                  <Select value={deleteOlderThanDays} onValueChange={setDeleteOlderThanDays}>
+                    <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 dias</SelectItem>
+                      <SelectItem value="60">60 dias</SelectItem>
+                      <SelectItem value="90">90 dias</SelectItem>
+                      <SelectItem value="120">120 dias</SelectItem>
+                      <SelectItem value="180">180 dias</SelectItem>
+                      <SelectItem value="365">365 dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <Button variant="destructive" size="sm" onClick={handleDeleteLeads} disabled={deletingLeads}>
+                {deletingLeads ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Trash className="mr-1 h-3.5 w-3.5" />}
+                Excluir leads
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
