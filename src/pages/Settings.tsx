@@ -173,6 +173,26 @@ export default function Settings() {
     });
   };
 
+  const handleSaveRetention = () => {
+    updateSetting.mutate(
+      { key: 'message_cleanup', value: { retention_days: retentionDays } },
+      { onSuccess: () => toast.success('Período de retenção salvo'), onError: () => toast.error('Erro ao salvar') },
+    );
+  };
+
+  const handleRunCleanup = async () => {
+    setRunningCleanup(true);
+    try {
+      const { error } = await supabase.rpc('delete_old_messages');
+      if (error) throw error;
+      toast.success('Limpeza executada com sucesso!');
+    } catch (err: any) {
+      toast.error(`Erro ao executar limpeza: ${err.message}`);
+    } finally {
+      setRunningCleanup(false);
+    }
+  };
+
   if (user?.role !== 'admin') return null;
 
   const defaultColors = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
