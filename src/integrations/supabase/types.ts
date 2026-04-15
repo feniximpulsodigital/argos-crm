@@ -288,6 +288,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clear_all_messages: { Args: never; Returns: undefined }
       delete_old_messages: { Args: never; Returns: undefined }
       has_role: {
         Args: {
