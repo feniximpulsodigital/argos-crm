@@ -307,8 +307,7 @@ export function useUpdateAppSetting() {
     mutationFn: async ({ key, value }: { key: string; value: any }) => {
       const { error } = await supabase
         .from('app_settings')
-        .update({ value, updated_at: new Date().toISOString() })
-        .eq('key', key);
+        .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['app_settings'] }),
