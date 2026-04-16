@@ -296,24 +296,28 @@ Deno.serve(async (req) => {
 
     // 4. AI logic — only for incoming messages (fire-and-forget n8n call)
     if (!isFromMe) {
-      if (messageType === 'image' || messageType === 'audio') {
+      const isMedia = messageType === 'image' || messageType === 'audio';
+
+      if (isMedia) {
         supabase
           .from('contacts')
           .update({ ai_enabled: false })
           .eq('id', contact.id)
-          .then(() => console.log(`IA desativada para lead ${contact.id} (mídia)`));
+          .then(() => console.log(`IA desativada para lead ${contact.id} (mídia) — n8n não será acionado`));
+      } else if (contact.ai_enabled) {
+        // Only forward to n8n for text messages when AI is still enabled for this lead
+        supabase
+          .from('messages')
+          .select('id, content, sender_type, sender_name, type, created_at')
+          .eq('contact_id', contact.id)
+          .order('created_at', { ascending: false })
+          .limit(5)
+          .then(({ data: recentMessages }) => {
+            sendToN8n(contact as Record<string, unknown>, savedMessage as Record<string, unknown>, recentMessages || []);
+          });
+      } else {
+        console.log(`IA desativada para lead ${contact.id} — mensagem não enviada ao n8n`);
       }
-
-      // Fire-and-forget: send to n8n without blocking response
-      supabase
-        .from('messages')
-        .select('id, content, sender_type, sender_name, type, created_at')
-        .eq('contact_id', contact.id)
-        .order('created_at', { ascending: false })
-        .limit(5)
-        .then(({ data: recentMessages }) => {
-          sendToN8n(contact as Record<string, unknown>, savedMessage as Record<string, unknown>, recentMessages || []);
-        });
     }
 
     console.log(`Mensagem processada: contact ${contact.id}, tipo: ${messageType}, fromMe: ${isFromMe}`);
