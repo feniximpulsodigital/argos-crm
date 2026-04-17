@@ -54,7 +54,7 @@ function handleVerification(url: URL): Response {
   const token = url.searchParams.get('hub.verify_token');
   const challenge = url.searchParams.get('hub.challenge');
 
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+  if (mode === 'subscribe' && VERIFY_TOKEN && token === VERIFY_TOKEN) {
     console.log('Meta webhook verificado com sucesso.');
     return new Response(challenge, { status: 200 });
   }
