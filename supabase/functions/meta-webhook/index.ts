@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { corsHeaders } from '../_shared/cors.ts';
 
-const VERIFY_TOKEN = Deno.env.get('META_VERIFY_TOKEN') || 'mobiliaurbana2024';
+const VERIFY_TOKEN = Deno.env.get('META_VERIFY_TOKEN');
 
 interface ContactRow {
   id: string;
