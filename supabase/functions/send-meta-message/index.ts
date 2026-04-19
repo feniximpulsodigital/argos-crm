@@ -19,10 +19,30 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers });
     }
 
-    // Service role is authenticated ONLY by exact match against the secret env var.
-    // Never trust unverified JWT payload claims.
+    // Service role auth: accept EITHER an exact match against the current secret,
+    // OR a legacy service_role JWT signed with the project's JWT secret (verified via signature).
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
-    const isServiceRole = Boolean(serviceRoleKey && token === serviceRoleKey);
+    let isServiceRole = Boolean(serviceRoleKey && token === serviceRoleKey);
+
+    // Fallback: legacy service_role JWT. We verify the signature using the anon key client
+    // by calling auth.getClaims() — if the token is a valid JWT signed by this project AND
+    // its role claim is "service_role", we accept it.
+    if (!isServiceRole && token.split('.').length === 3) {
+      try {
+        const verifyClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_ANON_KEY')!,
+          { auth: { persistSession: false } },
+        );
+        const { data: claimsData, error: claimsError } = await verifyClient.auth.getClaims(token);
+        if (!claimsError && claimsData?.claims?.role === 'service_role') {
+          isServiceRole = true;
+          console.log('[auth-debug] accepted legacy service_role JWT via signature verification');
+        }
+      } catch (e) {
+        console.log('[auth-debug] legacy JWT verification failed:', (e as Error).message);
+      }
+    }
 
     // Debug: log token characteristics WITHOUT exposing the token itself
     try {
