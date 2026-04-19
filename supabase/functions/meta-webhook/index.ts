@@ -345,6 +345,6 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ success: true }), { status: 200, headers });
   } catch (error) {
     console.error('Erro no meta-webhook:', error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers });
+    return new Response(JSON.stringify({ error: 'Erro interno ao processar webhook' }), { status: 500, headers });
   }
 });

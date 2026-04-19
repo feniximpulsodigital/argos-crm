@@ -227,6 +227,6 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ success: true, external_id: externalMessageId }), { status: 200, headers });
   } catch (error) {
     console.error('Erro no send-meta-message:', error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers });
+    return new Response(JSON.stringify({ error: 'Erro interno ao enviar mensagem' }), { status: 500, headers });
   }
 });
