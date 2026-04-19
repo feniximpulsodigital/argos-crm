@@ -21,8 +21,8 @@ const periodDays: Record<Period, number> = { 'Hoje': 0, '7 dias': 7, '15 dias': 
 
 const CHANNEL_MAP: Record<string, { label: string; color: string }> = {
   whatsapp: { label: 'WhatsApp', color: '#25D366' },
-  'instagram-direct': { label: 'Instagram', color: '#E1306C' },
-  messenger: { label: 'Messenger', color: '#0084FF' },
+  'instagram-direct': { label: 'Instagram', color: '#E4405F' },
+  messenger: { label: 'Messenger', color: '#1877F2' },
   'facebook-ads': { label: 'Facebook Ads', color: '#1877F2' },
   site: { label: 'Site', color: '#f37121' },
 };

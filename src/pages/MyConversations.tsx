@@ -11,8 +11,8 @@ import { format, parseISO } from 'date-fns';
 
 const channelStyles: Record<string, { bg: string; label: string }> = {
   whatsapp: { bg: '#25D366', label: 'WhatsApp' },
-  'instagram-direct': { bg: '#E1306C', label: 'Instagram' },
-  messenger: { bg: '#0084FF', label: 'Messenger' },
+  'instagram-direct': { bg: '#E4405F', label: 'Instagram' },
+  messenger: { bg: '#1877F2', label: 'Messenger' },
   'facebook-ads': { bg: '#1877F2', label: 'Facebook Ads' },
   site: { bg: '#f37121', label: 'Site' },
 };
