@@ -24,6 +24,26 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
     const isServiceRole = Boolean(serviceRoleKey && token === serviceRoleKey);
 
+    // Debug: log token characteristics WITHOUT exposing the token itself
+    try {
+      const tokenLen = token.length;
+      const secretLen = serviceRoleKey?.length ?? 0;
+      const tokenPrefix = token.substring(0, 12);
+      const tokenSuffix = token.substring(token.length - 6);
+      // Decode JWT payload to inspect role claim (no signature verification, just for logging)
+      let role = 'unknown';
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        try {
+          const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+          role = payload.role || 'no-role-claim';
+        } catch (_) { role = 'decode-failed'; }
+      }
+      console.log(`[auth-debug] tokenLen=${tokenLen} secretLen=${secretLen} match=${isServiceRole} role=${role} prefix=${tokenPrefix}... suffix=...${tokenSuffix}`);
+    } catch (e) {
+      console.log('[auth-debug] failed to inspect token:', (e as Error).message);
+    }
+
     let userId: string | null = null;
     let senderType = 'ia';
     let defaultSenderName = 'IA';
