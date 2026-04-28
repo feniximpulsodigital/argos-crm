@@ -114,9 +114,39 @@ async function processMessaging(entry: any, messaging: any, supabase: ReturnType
     return;
   }
 
-  const content = messageObj?.text || postback?.title || messageObj?.attachments?.[0]?.payload?.url || 'Mídia recebida';
+  // Ignore non-conversational events that cause n8n loops:
+  // delivery receipts, read receipts, reactions (likes/hearts/etc), referrals, optins
+  if (messaging.delivery || messaging.read || messaging.reaction || messaging.referral || messaging.optin) {
+    console.log('Evento não-conversacional ignorado (delivery/read/reaction/referral/optin).');
+    return;
+  }
+
+  // Ignore message reactions sent inside message object
+  if (messageObj?.reaction) {
+    console.log('Reação de mensagem ignorada.');
+    return;
+  }
+
+  // Story replies / mentions sometimes don't carry text — ignore if completely empty
+  const hasText = !!messageObj?.text;
+  const hasAttachment = !!messageObj?.attachments?.[0];
+  const hasPostback = !!postback;
+
+  if (!hasText && !hasAttachment && !hasPostback) {
+    console.log('Mensagem sem conteúdo real ignorada (provável like/sticker/reaction).');
+    return;
+  }
+
+  // Ignore "like" sticker (Messenger heart/thumbs-up sticker)
+  const attachment = messageObj?.attachments?.[0];
+  if (attachment?.type === 'image' && attachment?.payload?.sticker_id) {
+    console.log('Sticker (curtida/joinha) ignorado.');
+    return;
+  }
+
+  const content = messageObj?.text || postback?.title || attachment?.payload?.url || 'Mídia recebida';
   const messageId = messageObj?.mid || `postback_${Date.now()}`;
-  const messageType = messageObj?.attachments?.[0]?.type || 'text';
+  const messageType = attachment?.type || 'text';
 
   // Use the top-level "object" field from Meta payload to determine channel
   const isInstagram = objectType === 'instagram';
