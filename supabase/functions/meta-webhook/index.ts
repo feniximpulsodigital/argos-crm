@@ -177,14 +177,37 @@ async function processComment(entry: any, change: any, supabase: ReturnType<type
   const value = change.value;
   if (!value) return;
 
+  // Ignore non-comment events on the feed (likes, reactions, shares, edits, hides)
+  // value.item examples: 'like', 'reaction', 'comment', 'post', 'share', 'status'
+  // value.verb examples: 'add', 'edited', 'remove', 'hide', 'unhide'
+  if (value.item && value.item !== 'comment') {
+    console.log(`Evento de feed ignorado (item=${value.item}, verb=${value.verb}).`);
+    return;
+  }
+  if (value.verb && value.verb !== 'add') {
+    console.log(`Evento de feed ignorado (verb=${value.verb}).`);
+    return;
+  }
+  // Ignore reactions on Instagram comments field
+  if (value.reaction_type) {
+    console.log('Reação em comentário ignorada.');
+    return;
+  }
+
   // For feed (Facebook page comments)
   const commentId = value.comment_id || value.id;
   const senderId = value.from?.id;
   const senderName = value.from?.name || senderId || 'Desconhecido';
-  const content = value.message || value.text || 'Comentário sem texto';
+  const rawContent = value.message || value.text;
   const postId = value.post_id || value.media_id;
 
   if (!senderId || !commentId) return;
+
+  // Skip empty comments (likely a like/sticker without message)
+  if (!rawContent || !rawContent.trim()) {
+    console.log('Comentário sem texto ignorado.');
+    return;
+  }
 
   // Determine channel - differentiate Facebook vs Instagram comments
   const channel = change.field === 'comments' ? 'Comentário Instagram' : 'Comentário Facebook';
@@ -193,7 +216,7 @@ async function processComment(entry: any, change: any, supabase: ReturnType<type
   await upsertContactAndSaveMessage(supabase, {
     externalId: senderId,
     name: senderName,
-    content: `[Comentário${postId ? ` no post ${postId}` : ''}]: ${content}`,
+    content: `[Comentário${postId ? ` no post ${postId}` : ''}]: ${rawContent}`,
     messageId: commentId,
     messageType: 'comment',
     channel,
