@@ -3,8 +3,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Subscribes to realtime changes on `messages` and `contacts` tables,
- * automatically invalidating the relevant TanStack Query caches.
+ * Subscribes to realtime changes on the `messages` table and invalidates
+ * the relevant TanStack Query caches. Contact list refresh is piggy-backed
+ * on message events to avoid broadcasting contact rows (which contain phone
+ * numbers and emails) to authenticated users not assigned to those contacts.
  */
 export function useRealtimeSync() {
   const qc = useQueryClient();
@@ -23,14 +25,8 @@ export function useRealtimeSync() {
           qc.invalidateQueries({ queryKey: ['contacts'] });
         },
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'contacts' },
-        () => {
-          qc.invalidateQueries({ queryKey: ['contacts'] });
-        },
-      )
       .subscribe();
+
 
     return () => {
       supabase.removeChannel(channel);
